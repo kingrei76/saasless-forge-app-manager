@@ -1,0 +1,405 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold"><%= @app.name %></h2>
+    <p class="text-sm opacity-60"><%= @app.full_name %></p>
+  </div>
+  <div class="flex gap-2">
+    <% if @app.url.present? %>
+      <%= link_to @app.url, target: "_blank", class: "btn btn-outline btn-sm" do %>
+        <i class="fab fa-github mr-1"></i> View on GitHub
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Details</h3>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><span class="opacity-60">Language</span><p class="font-medium"><%= @app.language || "—" %></p></div>
+        <div><span class="opacity-60">Default Branch</span><p class="font-medium"><%= @app.default_branch %></p></div>
+        <div><span class="opacity-60">Status</span><p class="font-medium"><%= @app.status || "—" %></p></div>
+        <div><span class="opacity-60">Included</span><p><span class="badge badge-<%= @app.included? ? 'success' : 'ghost' %> badge-sm"><%= @app.included? ? 'Yes' : 'No' %></span></p></div>
+        <div class="col-span-2"><span class="opacity-60">Description</span><p><%= @app.description || "—" %></p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Recent Commits</h3>
+      <% if @commits.present? %>
+        <div class="space-y-2 max-h-48 overflow-y-auto">
+          <% @commits.first(5).each do |commit| %>
+            <div class="flex items-start gap-2 text-sm border-b border-base-200 pb-2">
+              <span class="font-mono text-xs bg-base-200 px-1 rounded"><%= commit.dig("sha")&.first(7) %></span>
+              <div class="flex-1 min-w-0">
+                <p class="truncate"><%= commit.dig("commit", "message")&.lines&.first&.strip %></p>
+                <p class="text-xs opacity-60">
+                  <%= commit.dig("commit", "author", "name") %> -
+                  <% if commit.dig("commit", "author", "date") %>
+                    <%= time_ago_in_words(Time.parse(commit.dig("commit", "author", "date"))) %> ago
+                  <% end %>
+                </p>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% elsif @app.latest_commit_sha %>
+        <p class="text-sm font-mono"><%= @app.latest_commit_sha&.first(8) %></p>
+        <p class="text-sm"><%= @app.latest_commit_message %></p>
+        <p class="text-xs opacity-60"><%= @app.latest_commit_at && time_ago_in_words(@app.latest_commit_at) + " ago" %></p>
+      <% else %>
+        <p class="text-sm opacity-60">No commit data available.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Assigned Clients (<%= @clients.count %>)</h3>
+      <% if @clients.any? %>
+        <ul class="space-y-1">
+          <% @clients.each do |client| %>
+            <li><%= link_to client.name, admin_client_path(client), class: "link link-primary" %></li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p class="text-sm opacity-60">No clients assigned.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex justify-between items-center">
+        <h3 class="card-title text-base">Recent Costs</h3>
+        <%= link_to new_admin_cost_entry_path(app_id: @app.id), class: "btn btn-ghost btn-xs" do %>
+          <i class="fas fa-plus"></i> Add
+        <% end %>
+      </div>
+      <% if @cost_entries.any? %>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead><tr><th>Service</th><th>Amount</th><th>Period</th></tr></thead>
+            <tbody>
+              <% @cost_entries.limit(10).each do |entry| %>
+                <tr>
+                  <td><%= entry.service_name %></td>
+                  <td><%= number_to_currency(entry.amount) %></td>
+                  <td class="text-xs"><%= entry.period_start %> - <%= entry.period_end %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <p class="text-sm opacity-60">No cost entries yet.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Associated Projects (<%= @projects.count %>)</h3>
+      <% if @projects.any? %>
+        <div class="space-y-2">
+          <% @projects.each do |project| %>
+            <div class="flex items-center justify-between p-2 rounded border border-base-200">
+              <div>
+                <%= link_to project.title, admin_project_path(project), class: "link link-primary font-medium" %>
+                <p class="text-xs opacity-60"><%= project.client.name %></p>
+              </div>
+              <span class="badge badge-<%= project.status == 'active' ? 'success' : 'ghost' %> badge-sm"><%= project.status %></span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm opacity-60">No projects associated via clients.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Associated Bids (<%= @bids.count %>)</h3>
+      <% if @bids.any? %>
+        <div class="space-y-2">
+          <% @bids.each do |bid| %>
+            <div class="flex items-center justify-between p-2 rounded border border-base-200">
+              <div>
+                <%= link_to bid.title, admin_bid_path(bid), class: "link link-primary font-medium" %>
+                <p class="text-xs opacity-60"><%= bid.client&.name || "No client" %> - <%= number_to_currency(bid.total) %></p>
+              </div>
+              <span class="badge badge-<%= bid.status == 'accepted' ? 'success' : (bid.status == 'draft' ? 'warning' : 'ghost') %> badge-sm"><%= bid.status %></span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-sm opacity-60">No bids associated with this app.</p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @cost_by_month.present? && @cost_by_month.values.any? { |v| v > 0 } %>
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-base">Cost Trend (Last 6 Months)</h3>
+    <div class="h-48">
+      <div class="flex items-end justify-between h-full gap-2">
+        <% max_cost = @cost_by_month.values.max || 1 %>
+        <% sorted_months = @cost_by_month.sort_by { |k, _| k }.last(6) %>
+        <% sorted_months.each do |month, cost| %>
+          <div class="flex-1 flex flex-col items-center">
+            <div class="w-full bg-primary rounded-t" style="height: <%= [(cost / max_cost * 100).to_i, 5].max %>%"></div>
+            <p class="text-xs mt-1 font-medium"><%= number_to_currency(cost, precision: 0) %></p>
+            <p class="text-xs opacity-60"><%= month.strftime("%b") %></p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+<% end %>
+
+<%# AI Settings %>
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-base">AI Settings</h3>
+    <%= form_with model: [:admin, @app], class: "space-y-4" do |f| %>
+      <div class="form-control">
+        <label class="label"><span class="label-text">AI Provider</span></label>
+        <%= f.select :ai_api_provider,
+            [["None", ""], ["Grok (xAI)", "grok"], ["OpenAI", "openai"], ["Anthropic (Claude)", "anthropic"]],
+            {},
+            class: "select select-bordered select-sm w-48" %>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">API Key</span></label>
+        <%= f.password_field :ai_api_key,
+            value: @app.ai_api_key.present? ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "",
+            class: "input input-bordered input-sm w-full max-w-md",
+            placeholder: "Enter API key..." %>
+        <label class="label">
+          <span class="label-text-alt">Costs for API calls using this key will be tracked to this app.</span>
+        </label>
+      </div>
+      <div class="flex gap-2">
+        <%= f.submit "Save AI Settings", class: "btn btn-primary btn-sm" %>
+      </div>
+    <% end %>
+
+    <% if @app.ai_api_key.present? %>
+      <div class="divider"></div>
+      <div class="space-y-3">
+        <h4 class="font-semibold text-sm">Integration Instructions</h4>
+        <p class="text-sm opacity-70">After each AI API call in your app, report usage to track costs:</p>
+
+        <div class="mockup-code text-xs">
+          <pre data-prefix="$"><code>curl -X POST <%= request.base_url %>/api/ai_usage \</code></pre>
+          <pre data-prefix=""><code>  -H "Content-Type: application/json" \</code></pre>
+          <pre data-prefix=""><code>  -d '{</code></pre>
+          <pre data-prefix=""><code>    "api_key": "YOUR_AI_API_KEY",</code></pre>
+          <pre data-prefix=""><code>    "provider": "<%= @app.ai_api_provider || 'grok' %>",</code></pre>
+          <pre data-prefix=""><code>    "model": "grok-3",</code></pre>
+          <pre data-prefix=""><code>    "operation": "chat_completion",</code></pre>
+          <pre data-prefix=""><code>    "input_tokens": 1500,</code></pre>
+          <pre data-prefix=""><code>    "output_tokens": 500</code></pre>
+          <pre data-prefix=""><code>  }'</code></pre>
+        </div>
+
+        <details class="collapse collapse-arrow bg-base-200">
+          <summary class="collapse-title text-sm font-medium">Python Example</summary>
+          <div class="collapse-content">
+            <pre class="text-xs overflow-x-auto"><code>import requests
+import os
+
+def report_ai_usage(input_tokens, output_tokens, model="grok-3", operation="chat"):
+    requests.post(
+        "<%= request.base_url %>/api/ai_usage",
+        json={
+            "api_key": os.environ["AI_API_KEY"],
+            "provider": "<%= @app.ai_api_provider || 'grok' %>",
+            "model": model,
+            "operation": operation,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens
+        }
+    )</code></pre>
+          </div>
+        </details>
+
+        <details class="collapse collapse-arrow bg-base-200">
+          <summary class="collapse-title text-sm font-medium">JavaScript/Node Example</summary>
+          <div class="collapse-content">
+            <pre class="text-xs overflow-x-auto"><code>async function reportAiUsage(inputTokens, outputTokens, model = "grok-3") {
+  await fetch("<%= request.base_url %>/api/ai_usage", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      api_key: process.env.AI_API_KEY,
+      provider: "<%= @app.ai_api_provider || 'grok' %>",
+      model,
+      operation: "chat_completion",
+      input_tokens: inputTokens,
+      output_tokens: outputTokens
+    })
+  });
+}</code></pre>
+          </div>
+        </details>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# AI API Costs Section %>
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <div class="flex justify-between items-center">
+      <h3 class="card-title text-base">AI API Costs</h3>
+      <%= link_to admin_infrastructure_path(tab: "ai_apis", app_id: @app.id), class: "btn btn-ghost btn-sm" do %>
+        <i class="fas fa-chart-line"></i> View Details
+      <% end %>
+    </div>
+
+    <div class="stats stats-horizontal shadow mt-4">
+      <div class="stat">
+        <div class="stat-title">This Month</div>
+        <div class="stat-value text-lg"><%= number_to_currency(@app.api_cost_this_month) %></div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">API Calls</div>
+        <div class="stat-value text-lg"><%= @app.api_usage_logs.this_month.count %></div>
+      </div>
+      <div class="stat">
+        <div class="stat-title">All Time</div>
+        <div class="stat-value text-lg"><%= number_to_currency(@app.api_usage_logs.sum(:estimated_cost)) %></div>
+      </div>
+    </div>
+
+    <% if @app.api_usage_logs.empty? %>
+      <p class="text-sm opacity-60 mt-4">No AI API usage recorded for this app.</p>
+    <% end %>
+  </div>
+</div>
+
+<%# Render Services Section %>
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h3 class="card-title text-base">Render Services</h3>
+        <% if @app.render_services.any? %>
+          <p class="text-sm opacity-60">
+            Total: <%= number_to_currency(@app.total_render_monthly_cost) %>/month
+          </p>
+        <% end %>
+      </div>
+      <%= link_to admin_infrastructure_path(tab: "render_services"), class: "btn btn-ghost btn-sm" do %>
+        <i class="fas fa-cog"></i> Manage All Services
+      <% end %>
+    </div>
+
+    <% if @app.render_services.any? %>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Type</th>
+              <th>Plan</th>
+              <th class="text-right">Cost</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @app.render_services.order(:service_type, :name).each do |service| %>
+              <tr class="<%= service.suspended? ? 'opacity-50' : '' %>">
+                <td>
+                  <div class="flex items-center gap-2">
+                    <i class="fas <%= service.service_icon %> text-base-content/50"></i>
+                    <span class="font-medium"><%= service.name %></span>
+                    <% if service.suspended? %>
+                      <span class="badge badge-error badge-xs">Suspended</span>
+                    <% end %>
+                  </div>
+                </td>
+                <td><span class="badge badge-ghost badge-xs"><%= service.service_type_label %></span></td>
+                <td><span class="font-mono text-sm"><%= service.plan || "—" %></span></td>
+                <td class="text-right">
+                  <% if service.monthly_price > 0 %>
+                    <%= number_to_currency(service.monthly_price) %>/mo
+                  <% else %>
+                    <span class="badge badge-success badge-xs">Free</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= button_to unlink_admin_render_service_path(service, redirect_to: admin_app_path(@app)),
+                      method: :post,
+                      class: "btn btn-ghost btn-xs text-error",
+                      data: { turbo: true, turbo_confirm: "Unlink #{service.name}?" } do %>
+                    <i class="fas fa-unlink"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-4">
+        <p class="text-sm opacity-60 mb-2">No Render services linked to this app.</p>
+        <%= link_to admin_infrastructure_path(tab: "render_services", linked: "false"), class: "btn btn-sm btn-outline" do %>
+          <i class="fas fa-link mr-1"></i> Link Services
+        <% end %>
+      </div>
+    <% end %>
+
+    <%# Add Service Dropdown %>
+    <% unlinked_services = RenderService.unlinked.active.order(:name) %>
+    <% if unlinked_services.any? %>
+      <div class="divider text-xs opacity-50">Add Service</div>
+      <div class="flex gap-2 items-center">
+        <%= form_with url: nil, method: :post, id: "add-service-form", class: "flex gap-2 flex-1" do |f| %>
+          <select id="add-service-select" class="select select-bordered select-sm flex-1">
+            <option value="">Select a service to link...</option>
+            <% unlinked_services.each do |service| %>
+              <option value="<%= link_admin_render_service_path(service, app_id: @app.id) %>"
+                      data-cost="<%= service.monthly_price %>">
+                <%= service.name %> (<%= service.service_type_label %>) - <%= number_to_currency(service.monthly_price) %>/mo
+              </option>
+            <% end %>
+          </select>
+          <button type="button" onclick="linkSelectedService()" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> Add
+          </button>
+        <% end %>
+      </div>
+      <script>
+        function linkSelectedService() {
+          const select = document.getElementById('add-service-select');
+          if (select.value) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = select.value;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'authenticity_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            form.submit();
+          }
+        }
+      </script>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,50 @@
+<%= form_with model: [:admin, @project, @time_entry], class: "space-y-4" do |f| %>
+  <% if @time_entry.errors.any? %>
+    <div class="alert alert-error">
+      <ul class="list-disc list-inside">
+        <% @time_entry.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">Date</span>
+    </label>
+    <%= f.date_field :entry_date, class: "input input-bordered", required: true %>
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">Hours</span>
+    </label>
+    <%= f.number_field :hours, class: "input input-bordered", step: 0.25, min: 0.25, max: 24, required: true, placeholder: "e.g., 2.5" %>
+    <label class="label">
+      <span class="label-text-alt">Enter time in hours (e.g., 1.5 for 1 hour 30 minutes)</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">Work Category</span>
+    </label>
+    <%= f.select :work_category,
+        TimeEntry::WORK_CATEGORIES.map { |c| [TimeEntry::WORK_CATEGORY_LABELS[c], c] },
+        { prompt: "Select category..." },
+        class: "select select-bordered", required: true %>
+  </div>
+
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">Notes (optional)</span>
+    </label>
+    <%= f.text_area :notes, class: "textarea textarea-bordered h-24", placeholder: "What did you work on?" %>
+  </div>
+
+  <div class="flex gap-2 pt-4">
+    <%= f.submit @time_entry.persisted? ? "Update Entry" : "Log Time", class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_project_path(@project), class: "btn btn-ghost" %>
+  </div>
+<% end %>

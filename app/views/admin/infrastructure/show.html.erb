@@ -1,0 +1,39 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Infrastructure</h2>
+    <p class="text-sm opacity-60">Manage hosting services and API integrations</p>
+  </div>
+</div>
+
+<%# Combined Stats Cards %>
+<%= render "stats_cards" %>
+
+<%# Tab Navigation %>
+<div data-controller="toggle" class="mt-6">
+  <div class="tabs tabs-boxed bg-base-100 p-1 mb-6">
+    <a href="#"
+       data-toggle-target="tab"
+       data-tab="render_services"
+       data-action="click->toggle#show"
+       class="tab <%= @tab == 'render_services' ? 'tab-active' : '' %>">
+      <i class="fas fa-cloud mr-2"></i> Render Services
+    </a>
+    <a href="#"
+       data-toggle-target="tab"
+       data-tab="ai_apis"
+       data-action="click->toggle#show"
+       class="tab <%= @tab == 'ai_apis' ? 'tab-active' : '' %>">
+      <i class="fas fa-brain mr-2"></i> AI APIs
+    </a>
+  </div>
+
+  <%# Render Services Tab %>
+  <div data-toggle-target="panel" data-panel="render_services" class="<%= @tab == 'ai_apis' ? 'hidden' : '' %>">
+    <%= render "render_services_tab" %>
+  </div>
+
+  <%# AI APIs Tab %>
+  <div data-toggle-target="panel" data-panel="ai_apis" class="<%= @tab == 'render_services' ? 'hidden' : '' %>">
+    <%= render "ai_apis_tab" %>
+  </div>
+</div>

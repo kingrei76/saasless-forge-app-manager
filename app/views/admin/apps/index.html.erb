@@ -1,0 +1,71 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Apps</h2>
+</div>
+
+<!-- Filters -->
+<div class="card bg-base-100 shadow mb-6" data-controller="filter">
+  <div class="card-body">
+    <%= form_with(url: admin_apps_path, method: :get, data: { filter_target: "form", action: "input->filter#submit" }) do |f| %>
+      <div class="flex flex-wrap gap-4 items-end">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Search</span></label>
+          <%= f.text_field :search, value: params[:search], class: "input input-bordered input-sm", placeholder: "Search apps...", data: { filter_target: "search" } %>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">GitHub Account</span></label>
+          <%= f.select :github_account_id, options_from_collection_for_select(@github_accounts, :id, :display_name, params[:github_account_id]), { include_blank: "All Accounts" }, class: "select select-bordered select-sm", data: { action: "change->filter#submit" } %>
+        </div>
+        <div>
+          <%= f.submit "Filter", class: "btn btn-primary btn-sm" %>
+          <%= link_to "Clear", admin_apps_path, class: "btn btn-ghost btn-sm" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%= turbo_frame_tag "apps_table" do %>
+  <div class="overflow-x-auto bg-base-100 rounded-box shadow">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Account</th>
+          <th>Language</th>
+          <th>Latest Commit</th>
+          <th>Clients</th>
+          <th>Included</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @apps.each do |app| %>
+          <tr id="<%= dom_id(app) %>">
+            <td>
+              <%= link_to app.name, admin_app_path(app), class: "link link-primary font-medium", data: { turbo_frame: "_top" } %>
+              <br><span class="text-xs opacity-60"><%= app.full_name %></span>
+            </td>
+            <td><%= app.github_account.display_name %></td>
+            <td><span class="badge badge-outline badge-sm"><%= app.language || "—" %></span></td>
+            <td class="text-sm max-w-xs truncate"><%= app.latest_commit_message&.truncate(50) %></td>
+            <td><%= app.clients.count %></td>
+            <td>
+              <%= button_to toggle_included_admin_app_path(app), method: :patch, class: "swap" do %>
+                <% if app.included? %>
+                  <span class="badge badge-success badge-sm cursor-pointer">Included</span>
+                <% else %>
+                  <span class="badge badge-ghost badge-sm cursor-pointer">Excluded</span>
+                <% end %>
+              <% end %>
+            </td>
+            <td>
+              <%= link_to admin_app_path(app), class: "btn btn-ghost btn-xs", data: { turbo_frame: "_top" } do %>
+                <i class="fas fa-eye"></i>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>

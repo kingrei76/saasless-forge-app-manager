@@ -1,0 +1,53 @@
+<%= form_with(model: [:admin, bid], class: "space-y-4") do |f| %>
+  <% if bid.errors.any? %>
+    <div class="alert alert-error">
+      <ul><% bid.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %></ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <%= f.label :title, class: "label" %>
+    <%= f.text_field :title, class: "input input-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :project_id, "Project (optional)", class: "label" %>
+    <%= f.select :project_id, options_from_collection_for_select(@projects, :id, :title, bid.project_id), { include_blank: "No project" }, class: "select select-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :client_id, "Client (optional)", class: "label" %>
+    <%= f.select :client_id, options_from_collection_for_select(@clients, :id, :name, bid.client_id), { include_blank: "No client" }, class: "select select-bordered w-full" %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="form-control">
+      <%= f.label :hourly_rate, class: "label" %>
+      <%= f.number_field :hourly_rate, class: "input input-bordered w-full", step: 0.01 %>
+    </div>
+    <div class="form-control">
+      <%= f.label :status, class: "label" %>
+      <%= f.select :status, %w[draft sent accepted rejected], { selected: bid.status }, class: "select select-bordered w-full" %>
+    </div>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :notes, "Notes (Customer-Visible)", class: "label" %>
+    <%= f.text_area :notes, class: "textarea textarea-bordered w-full", rows: 4, placeholder: "These notes will appear on customer-facing PDFs" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :internal_notes, "Internal Notes (Admin Only)", class: "label" %>
+    <%= f.text_area :internal_notes, class: "textarea textarea-bordered w-full", rows: 4, placeholder: "Private notes that will never appear on PDFs or customer documents" %>
+    <label class="label">
+      <span class="label-text-alt text-base-content/60">
+        <i class="fas fa-eye-slash mr-1"></i> These notes are for internal use only and will not be shown to customers.
+      </span>
+    </label>
+  </div>
+
+  <div class="flex gap-2">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_bids_path, class: "btn btn-ghost" %>
+  </div>
+<% end %>

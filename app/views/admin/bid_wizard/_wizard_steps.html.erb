@@ -1,0 +1,17 @@
+<% steps = [
+  { key: "describe", label: "Describe", icon: "fa-pencil-alt" },
+  { key: "clarify", label: "Clarify", icon: "fa-comments" },
+  { key: "generate", label: "Hours", icon: "fa-clock" },
+  { key: "costs", label: "Costs", icon: "fa-server" },
+  { key: "review", label: "Review", icon: "fa-check" }
+] %>
+<% current_index = steps.index { |s| s[:key] == current_step } || 0 %>
+
+<ul class="steps steps-horizontal w-full mb-8">
+  <% steps.each_with_index do |step, index| %>
+    <li class="step <%= 'step-primary' if index <= current_index %>" data-content="<%= index < current_index ? '✓' : (index + 1) %>">
+      <span class="hidden sm:inline"><i class="fas <%= step[:icon] %> mr-1"></i><%= step[:label] %></span>
+      <span class="sm:hidden"><i class="fas <%= step[:icon] %>"></i></span>
+    </li>
+  <% end %>
+</ul>

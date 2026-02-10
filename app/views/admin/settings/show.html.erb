@@ -1,0 +1,221 @@
+<h2 class="text-2xl font-bold mb-6">Settings</h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <%= form_with(url: admin_settings_path, method: :patch, class: "space-y-6") do |f| %>
+      <div>
+        <h3 class="text-lg font-bold mb-4">Markup & Rates</h3>
+
+        <div class="form-control mb-4" data-controller="markup-preview">
+          <label class="label"><span class="label-text font-medium">Default Markup Percentage (%)</span></label>
+          <%= f.number_field "settings[default_markup_percentage]", value: @settings[:default_markup_percentage], class: "input input-bordered w-full", step: 0.1, data: { markup_preview_target: "markup", action: "input->markup-preview#preview" } %>
+          <label class="label">
+            <span class="label-text-alt">Applied when no client or assignment-level markup is set.</span>
+          </label>
+          <div class="mt-2 text-sm opacity-70" data-markup-preview-target="output">
+            Example: $100 cost &rarr; <strong><%= number_to_currency(100 * (1 + @settings[:default_markup_percentage].to_f / 100)) %></strong> billed
+          </div>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text font-medium">Default Hourly Rate ($)</span></label>
+          <%= f.number_field "settings[default_hourly_rate]", value: @settings[:default_hourly_rate], class: "input input-bordered w-full", step: 0.01 %>
+          <label class="label">
+            <span class="label-text-alt">Used as default rate when creating new bids.</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <h3 class="text-lg font-bold mb-4">
+          <i class="fab fa-stripe text-purple-600 mr-1"></i> Stripe
+        </h3>
+
+        <!-- Collapsible setup guide -->
+        <div class="collapse collapse-arrow bg-base-200 rounded-lg mb-4">
+          <input type="checkbox" />
+          <div class="collapse-title text-sm font-medium py-2 min-h-0">
+            <i class="fas fa-list-ol mr-1"></i> How to get your Stripe API keys
+          </div>
+          <div class="collapse-content text-sm">
+            <ol class="list-decimal list-inside space-y-2 text-base-content/70">
+              <li>Go to <a href="https://dashboard.stripe.com/register" target="_blank" class="link link-primary">dashboard.stripe.com</a> and sign in (or create an account)</li>
+              <li>
+                In the top-right, make sure you're in the correct mode:
+                <ul class="list-disc list-inside ml-4 mt-1">
+                  <li><code class="badge badge-sm badge-warning">Test mode</code> for development/testing (no real charges)</li>
+                  <li><code class="badge badge-sm badge-success">Live mode</code> for production (real charges)</li>
+                </ul>
+              </li>
+              <li>Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" class="link link-primary">Developers &rarr; API keys</a></li>
+              <li>
+                Copy these two keys:
+                <ul class="list-disc list-inside ml-4 mt-1">
+                  <li><strong>Publishable key</strong> &mdash; starts with <code class="badge badge-sm badge-ghost">pk_test_</code> or <code class="badge badge-sm badge-ghost">pk_live_</code></li>
+                  <li><strong>Secret key</strong> &mdash; starts with <code class="badge badge-sm badge-ghost">sk_test_</code> or <code class="badge badge-sm badge-ghost">sk_live_</code>. Click "Reveal test key" to see it.</li>
+                </ul>
+              </li>
+              <li>Paste them into the fields below and click <strong>Save Settings</strong></li>
+            </ol>
+            <div class="alert alert-warning mt-3 text-xs">
+              <i class="fas fa-exclamation-triangle"></i>
+              <span>Never share your <strong>Secret key</strong>. Use <strong>Test mode</strong> keys while developing. Switch to <strong>Live mode</strong> keys only when ready to charge real customers.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">Secret Key</span>
+            <span class="tooltip tooltip-left" data-tip="Found at dashboard.stripe.com/apikeys. Starts with 'sk_test_' (test) or 'sk_live_' (production).">
+              <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+            </span>
+          </label>
+          <%= f.password_field "settings[stripe_api_key]", value: @settings[:stripe_api_key], class: "input input-bordered w-full", placeholder: "sk_test_..." %>
+          <label class="label">
+            <span class="label-text-alt text-base-content/50">
+              <i class="fas fa-lock mr-1"></i>
+              <%= @settings[:stripe_api_key].present? ? "Configured (#{@settings[:stripe_api_key][0..7]}...)" : "Not configured" %>
+            </span>
+          </label>
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">Publishable Key</span>
+            <span class="tooltip tooltip-left" data-tip="Found at dashboard.stripe.com/apikeys. Starts with 'pk_test_' (test) or 'pk_live_' (production).">
+              <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+            </span>
+          </label>
+          <%= f.text_field "settings[stripe_publishable_key]", value: @settings[:stripe_publishable_key], class: "input input-bordered w-full", placeholder: "pk_test_..." %>
+          <label class="label">
+            <span class="label-text-alt text-base-content/50">
+              <%= @settings[:stripe_publishable_key].present? ? "Configured (#{@settings[:stripe_publishable_key][0..7]}...)" : "Not configured" %>
+            </span>
+          </label>
+        </div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">Webhook Signing Secret</span>
+            <span class="tooltip tooltip-left" data-tip="From Stripe CLI 'stripe listen' output or Stripe Dashboard > Developers > Webhooks. Starts with 'whsec_'.">
+              <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+            </span>
+          </label>
+          <%= f.password_field "settings[stripe_webhook_signing_secret]", value: @settings[:stripe_webhook_signing_secret], class: "input input-bordered w-full", placeholder: "whsec_..." %>
+          <label class="label">
+            <span class="label-text-alt text-base-content/50">
+              <i class="fas fa-lock mr-1"></i>
+              <%= @settings[:stripe_webhook_signing_secret].present? ? "Configured (#{@settings[:stripe_webhook_signing_secret][0..7]}...)" : "Not configured — using ENV['STRIPE_WEBHOOK_SECRET'] if set" %>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <h3 class="text-lg font-bold mb-4">
+          <i class="fas fa-cloud text-blue-500 mr-1"></i> Render
+        </h3>
+
+        <div class="alert alert-info mb-4">
+          <i class="fas fa-info-circle"></i>
+          <div>
+            <p class="font-medium">Render API keys are now configured per GitHub account</p>
+            <p class="text-sm opacity-80">
+              Each GitHub account can have its own Render API key, allowing you to manage multiple Render workspaces.
+            </p>
+          </div>
+        </div>
+
+        <% accounts_with_render = GithubAccount.with_render %>
+        <% if accounts_with_render.any? %>
+          <div class="mb-4">
+            <span class="text-sm font-medium">Configured accounts:</span>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <% accounts_with_render.each do |account| %>
+                <%= link_to admin_github_account_path(account), class: "badge badge-success gap-1" do %>
+                  <i class="fas fa-check-circle"></i> <%= account.display_name %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        <% else %>
+          <p class="text-sm opacity-60 mb-4">No GitHub accounts have Render configured yet.</p>
+        <% end %>
+
+        <%= link_to admin_github_accounts_path, class: "btn btn-outline btn-sm" do %>
+          <i class="fab fa-github mr-1"></i> Manage GitHub Accounts
+        <% end %>
+      </div>
+
+      <div class="divider"></div>
+
+      <div>
+        <h3 class="text-lg font-bold mb-4">
+          <i class="fas fa-robot text-green-500 mr-1"></i> Grok AI (xAI)
+        </h3>
+
+        <!-- Collapsible setup guide -->
+        <div class="collapse collapse-arrow bg-base-200 rounded-lg mb-4">
+          <input type="checkbox" />
+          <div class="collapse-title text-sm font-medium py-2 min-h-0">
+            <i class="fas fa-list-ol mr-1"></i> How to get your Grok API key
+          </div>
+          <div class="collapse-content text-sm">
+            <ol class="list-decimal list-inside space-y-2 text-base-content/70">
+              <li>Go to <a href="https://console.x.ai/" target="_blank" class="link link-primary">console.x.ai</a> and sign in with your X account</li>
+              <li>Navigate to <strong>API Keys</strong> in the dashboard</li>
+              <li>Click <strong>Create API Key</strong> and give it a name</li>
+              <li>Copy the API key (starts with <code class="badge badge-sm badge-ghost">xai-</code>)</li>
+              <li>Paste it into the field below and click <strong>Save Settings</strong></li>
+            </ol>
+            <div class="alert alert-info mt-3 text-xs">
+              <i class="fas fa-info-circle"></i>
+              <span>Grok AI is used to generate clarifying questions and bid suggestions in the AI Bid Wizard.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-control mb-4">
+          <label class="label">
+            <span class="label-text font-medium">API Key</span>
+            <span class="tooltip tooltip-left" data-tip="Found at console.x.ai/api-keys. Starts with 'xai-'.">
+              <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+            </span>
+          </label>
+          <%= f.password_field "settings[grok_api_key]", value: @settings[:grok_api_key], class: "input input-bordered w-full", placeholder: "xai-..." %>
+          <label class="label">
+            <span class="label-text-alt text-base-content/50">
+              <i class="fas fa-lock mr-1"></i>
+              <%= @settings[:grok_api_key].present? ? "Configured (#{@settings[:grok_api_key][0..6]}...)" : "Not configured" %>
+            </span>
+          </label>
+        </div>
+
+        <% if @settings[:grok_api_key].present? %>
+          <div class="flex gap-2 items-center">
+            <%= button_to admin_test_grok_connection_settings_path, method: :post, class: "btn btn-outline btn-sm" do %>
+              <i class="fas fa-plug mr-1"></i> Test Connection
+            <% end %>
+          </div>
+
+          <div class="stats stats-vertical lg:stats-horizontal shadow mt-4 bg-base-200">
+            <div class="stat py-3 px-4">
+              <div class="stat-title text-xs">This Month</div>
+              <div class="stat-value text-lg"><%= number_to_currency(@grok_usage_this_month || 0, precision: 4) %></div>
+              <div class="stat-desc"><%= @grok_calls_this_month || 0 %> API calls</div>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="divider"></div>
+
+      <%= f.submit "Save Settings", class: "btn btn-primary" %>
+    <% end %>
+  </div>
+</div>

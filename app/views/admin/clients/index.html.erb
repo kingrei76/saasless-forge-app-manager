@@ -1,0 +1,40 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Clients</h2>
+  <%= link_to new_admin_client_path, class: "btn btn-primary btn-sm" do %>
+    <i class="fas fa-plus mr-1"></i> Add Client
+  <% end %>
+</div>
+
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Company</th>
+        <th>Email</th>
+        <th>Markup %</th>
+        <th>Apps</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @clients.each do |client| %>
+        <tr>
+          <td class="font-medium"><%= link_to client.name, admin_client_path(client), class: "link link-primary" %></td>
+          <td><%= client.company %></td>
+          <td><%= client.email %></td>
+          <td><%= client.markup_percentage ? "#{client.markup_percentage}%" : "Default" %></td>
+          <td><%= client.apps.count %></td>
+          <td class="flex gap-1">
+            <%= link_to edit_admin_client_path(client), class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-edit"></i>
+            <% end %>
+            <%= button_to admin_client_path(client), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Delete this client?" } do %>
+              <i class="fas fa-trash"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

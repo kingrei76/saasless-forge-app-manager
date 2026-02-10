@@ -1,0 +1,39 @@
+<h2 class="text-2xl font-bold mb-6">Cost Charts</h2>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Monthly Costs -->
+  <div class="card bg-base-100 shadow" data-controller="chart">
+    <div class="card-body">
+      <h3 class="card-title text-base">Monthly Costs</h3>
+      <canvas data-chart-target="canvas"
+              data-chart-type-value="bar"
+              data-chart-labels-value="<%= @monthly_costs.map { |k, _| k&.strftime('%b %Y') }.to_json %>"
+              data-chart-data-value="<%= @monthly_costs.map { |_, v| v.to_f }.to_json %>"
+              data-chart-label-value="Cost ($)"></canvas>
+    </div>
+  </div>
+
+  <!-- Per App Costs -->
+  <div class="card bg-base-100 shadow" data-controller="chart">
+    <div class="card-body">
+      <h3 class="card-title text-base">Cost by App</h3>
+      <canvas data-chart-target="canvas"
+              data-chart-type-value="doughnut"
+              data-chart-labels-value="<%= @per_app_costs.first(10).map { |k, _| k }.to_json %>"
+              data-chart-data-value="<%= @per_app_costs.first(10).map { |_, v| v.to_f }.to_json %>"
+              data-chart-label-value="Cost ($)"></canvas>
+    </div>
+  </div>
+
+  <!-- Per Service Costs -->
+  <div class="card bg-base-100 shadow" data-controller="chart">
+    <div class="card-body">
+      <h3 class="card-title text-base">Cost by Service</h3>
+      <canvas data-chart-target="canvas"
+              data-chart-type-value="pie"
+              data-chart-labels-value="<%= @per_service_costs.map { |k, _| k }.to_json %>"
+              data-chart-data-value="<%= @per_service_costs.map { |_, v| v.to_f }.to_json %>"
+              data-chart-label-value="Cost ($)"></canvas>
+    </div>
+  </div>
+</div>

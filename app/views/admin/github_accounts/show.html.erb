@@ -1,0 +1,160 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold"><%= @github_account.display_name %></h2>
+  <div class="flex gap-2">
+    <%= button_to sync_admin_github_account_path(@github_account), method: :post, class: "btn btn-primary btn-sm" do %>
+      <i class="fab fa-github mr-1"></i> Sync GitHub
+    <% end %>
+    <%= link_to edit_admin_github_account_path(@github_account), class: "btn btn-outline btn-sm" do %>
+      <i class="fas fa-edit mr-1"></i> Edit
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">
+        <i class="fab fa-github mr-1"></i> GitHub Details
+      </h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <span class="text-sm opacity-60">Account Name</span>
+          <p class="font-medium"><%= @github_account.account_name %></p>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Label</span>
+          <p class="font-medium"><%= @github_account.label || "—" %></p>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Owner</span>
+          <p class="font-medium"><%= @github_account.user.email %></p>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Last Synced</span>
+          <p class="font-medium"><%= @github_account.last_synced_at ? time_ago_in_words(@github_account.last_synced_at) + " ago" : "Never" %></p>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Repos</span>
+          <p class="font-medium"><%= @github_account.apps.count %></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">
+        <i class="fas fa-cloud text-blue-500 mr-1"></i> Render Integration
+      </h3>
+      <% if @github_account.render_configured? %>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <span class="text-sm opacity-60">API Key</span>
+            <p class="font-medium text-success">
+              <i class="fas fa-check-circle mr-1"></i> Configured
+            </p>
+          </div>
+          <div>
+            <span class="text-sm opacity-60">Last Synced</span>
+            <p class="font-medium"><%= @github_account.render_last_synced_at ? time_ago_in_words(@github_account.render_last_synced_at) + " ago" : "Never" %></p>
+          </div>
+          <% if @github_account.render_owner_id.present? %>
+            <div class="col-span-2">
+              <span class="text-sm opacity-60">Workspace ID</span>
+              <p class="font-mono text-sm"><%= @github_account.render_owner_id %></p>
+            </div>
+          <% end %>
+        </div>
+        <div class="flex gap-2 mt-4">
+          <button type="button"
+                  onclick="testRenderConnection()"
+                  class="btn btn-outline btn-sm"
+                  id="test-render-btn">
+            <i class="fas fa-plug mr-1"></i> Test Connection
+          </button>
+          <%= button_to sync_render_admin_github_account_path(@github_account),
+              method: :post,
+              class: "btn btn-primary btn-sm" do %>
+            <i class="fas fa-sync mr-1"></i> Sync Render
+          <% end %>
+        </div>
+        <div id="render-test-result" class="mt-2 hidden"></div>
+      <% else %>
+        <div class="text-center py-4">
+          <p class="text-sm opacity-60 mb-3">No Render API key configured for this account.</p>
+          <%= link_to edit_admin_github_account_path(@github_account), class: "btn btn-sm btn-outline" do %>
+            <i class="fas fa-key mr-1"></i> Add Render API Key
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+async function testRenderConnection() {
+  const btn = document.getElementById('test-render-btn');
+  const resultDiv = document.getElementById('render-test-result');
+
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Testing...';
+  resultDiv.classList.add('hidden');
+
+  try {
+    const response = await fetch('<%= test_render_connection_admin_github_account_path(@github_account) %>', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      }
+    });
+
+    const data = await response.json();
+
+    resultDiv.classList.remove('hidden');
+    if (data.success) {
+      resultDiv.innerHTML = '<div class="alert alert-success text-sm py-2"><i class="fas fa-check-circle mr-1"></i> ' + data.message + '</div>';
+    } else {
+      resultDiv.innerHTML = '<div class="alert alert-error text-sm py-2"><i class="fas fa-exclamation-circle mr-1"></i> ' + data.error + '</div>';
+    }
+  } catch (e) {
+    resultDiv.classList.remove('hidden');
+    resultDiv.innerHTML = '<div class="alert alert-error text-sm py-2"><i class="fas fa-exclamation-circle mr-1"></i> Connection failed</div>';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-plug mr-1"></i> Test Connection';
+  }
+}
+</script>
+
+<h3 class="text-lg font-bold mb-4">Repos (<%= @github_account.apps.count %>)</h3>
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Language</th>
+        <th>Latest Commit</th>
+        <th>Included</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @github_account.apps.order(:name).each do |app| %>
+        <tr>
+          <td>
+            <%= link_to app.name, admin_app_path(app), class: "link link-primary" %>
+          </td>
+          <td><%= app.language %></td>
+          <td class="text-sm opacity-70"><%= app.latest_commit_message&.truncate(60) %></td>
+          <td>
+            <% if app.included? %>
+              <span class="badge badge-success badge-sm">Included</span>
+            <% else %>
+              <span class="badge badge-ghost badge-sm">Excluded</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

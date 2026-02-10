@@ -1,68 +1,34 @@
-version: "3.8"
-
 services:
-  llamapress:
-    image: kody06/llamapress-simple:0.3.2         # <— pre-built tag
-    env_file: .env                           # read secrets from this file
+  web:
+    build: .
+    env_file: .env
     environment:
       - RAILS_ENV=development
       - BOOTSNAP_CACHE_DIR=/rails/tmp/cache/bootsnap
     volumes:
-      - rails_storage:/rails/storage         # ActiveStorage local files
-      - ./rails/app:/rails/app:delegated
-      - ./rails/config/routes.rb:/rails/config/routes.rb:delegated
-      - ./rails/db:/rails/db:delegated
-      - ./rails/spec:/rails/spec:delegated
-      - ./rails/config/environments/development.rb:/rails/config/environments/development.rb
-      - ./rails/config/database.yml:/rails/config/database.yml
-      - ./rails/storage:/rails/storage       # ActiveStorage local files (persisted on host)
+      - .:/rails
+      - rails_storage:/rails/storage
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails db:prepare && bundle exec rails s -b 0.0.0.0"
-    #TO DEBUG, comment the above command, uncomment the below command, restart the container, then run the docker compose exec command below.
-    # command: tail -f /dev/null
-    # docker compose exec -it llamapress bundle exec rails s -b 0.0.0.0
     ports:
-      - "3000:3000"                            # http://server_ip/
+      - "3000:3000"
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
-    networks:
-      - llama-network
-
-  llamabot:
-    image: kody06/llamabot:0.3.4c
-    env_file:
-      - .env
-    command: bash -c "python init_pg_checkpointer.py && uvicorn main:app --host 0.0.0.0 --port 8000"
-    volumes:
-      - ./rails:/app/app/rails
-      - ./langgraph/langgraph.json:/app/app/langgraph.json
-      - ./langgraph/agents:/app/app/user_agents
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./:/app/leonardo  # Full Leonardo repo for git access
-    ports:
-      - "8080:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - llama-network
 
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB:      llamapress_production
-      POSTGRES_USER:    postgres
+      POSTGRES_DB: app_management_development
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - llama-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d llamapress_production"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -71,44 +37,8 @@ services:
     image: redis:7-alpine
     volumes: [redis_data:/data]
     restart: unless-stopped
-    networks:
-      - llama-network
 
-  code:
-    image: kody06/llamabot-vscode:0.2.0
-    container_name: code
-    environment:
-      - TZ=America/Denver
-      - PASSWORD=password
-      - PUID=1000
-      - PGID=1000
-    volumes:
-      - code_config:/config
-      - ./:/config/workspace
-    ports:
-      - "8443:8443"
-    restart: unless-stopped  
-
-  # pgweb:
-  #   image: sosedoff/pgweb
-  #   ports:
-  #     - "8082:8081"
-  #   environment:
-  #     DATABASE_URL: postgres://postgres:password@db:5432/llamapress_development?sslmode=disable
-  #     AUTH_USER: admin
-  #     AUTH_PASS: changeme
-  #   depends_on:
-  #     - db
-  #   networks:
-  #     - llama-network
-      
 volumes:
   redis_data:
   postgres_data:
   rails_storage:
-  code_config:
-
-# Declare the external network
-networks:
-  llama-network:
-    name: llama-network

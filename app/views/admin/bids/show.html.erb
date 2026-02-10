@@ -1,0 +1,489 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">
+      <%= @bid.title %>
+      <% if @bid.ai_generated? %>
+        <span class="badge badge-secondary badge-sm ml-2">SaaSless Agent</span>
+      <% end %>
+    </h2>
+    <p class="text-sm opacity-60">
+      <%= @bid.client&.name || "No client" %>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <% if @bid.status == "draft" %>
+      <%= button_to send_admin_bid_path(@bid), method: :post, class: "btn btn-info btn-sm", data: { turbo_confirm: "Mark this bid as sent to client?" } do %>
+        <i class="fas fa-paper-plane mr-1"></i> Send Bid
+      <% end %>
+    <% elsif @bid.status == "sent" %>
+      <button type="button" class="btn btn-success btn-sm" onclick="document.getElementById('accept-modal').showModal()">
+        <i class="fas fa-check mr-1"></i> Accept Bid
+      </button>
+      <%= button_to reject_admin_bid_path(@bid), method: :post, class: "btn btn-error btn-sm", data: { turbo_confirm: "Reject this bid?" } do %>
+        <i class="fas fa-times mr-1"></i> Reject
+      <% end %>
+    <% elsif @bid.status == "rejected" %>
+      <%= button_to reopen_admin_bid_path(@bid), method: :post, class: "btn btn-warning btn-sm" do %>
+        <i class="fas fa-undo mr-1"></i> Reopen as Draft
+      <% end %>
+    <% end %>
+    <%= link_to preview_pdf_admin_bid_path(@bid), class: "btn btn-outline btn-sm", target: "_blank" do %>
+      <i class="fas fa-file-pdf mr-1"></i> PDF Preview
+    <% end %>
+    <% unless @bid.status == "accepted" %>
+      <%= link_to edit_admin_bid_path(@bid), class: "btn btn-ghost btn-sm" do %>
+        <i class="fas fa-edit mr-1"></i> Edit
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<%= render "admin/bids/totals", bid: @bid %>
+
+<% if @bid.status == "accepted" && @bid.invoice.present? %>
+  <div class="alert alert-success mb-6">
+    <i class="fas fa-check-circle"></i>
+    <div>
+      <span class="font-medium">Bid Accepted!</span>
+      <div class="flex gap-4 mt-1">
+        <% if @bid.project %>
+          <%= link_to admin_project_path(@bid.project), class: "link link-primary" do %>
+            <i class="fas fa-folder mr-1"></i> View Project: <%= @bid.project.title %>
+          <% end %>
+        <% end %>
+        <%= link_to admin_invoice_path(@bid.invoice), class: "link link-primary" do %>
+          <i class="fas fa-file-invoice mr-1"></i> View Invoice #<%= @bid.invoice.id %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Tab Navigation -->
+<div class="tabs tabs-boxed mb-6" id="bid-tabs">
+  <a class="tab tab-active" data-tab="customer" onclick="switchTab('customer')">
+    <i class="fas fa-user mr-2"></i> Customer View
+  </a>
+  <a class="tab" data-tab="internal" onclick="switchTab('internal')">
+    <i class="fas fa-lock mr-2"></i> Internal Details
+  </a>
+</div>
+
+<script>
+function switchTab(tabName) {
+  document.querySelectorAll('#bid-tabs .tab').forEach(tab => {
+    tab.classList.toggle('tab-active', tab.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('hidden', panel.dataset.panel !== tabName);
+  });
+}
+
+function openEditModal(section, currentContent) {
+  document.getElementById('edit-section-name').textContent = section;
+  document.getElementById('edit-section-field').value = section;
+  document.getElementById('edit-content').value = currentContent || '';
+  document.getElementById('ai-prompt').value = '';
+  document.getElementById('edit-modal').showModal();
+}
+</script>
+
+<!-- Accept Bid Modal -->
+<dialog id="accept-modal" class="modal">
+  <div class="modal-box">
+    <h3 class="font-bold text-lg mb-4">
+      <i class="fas fa-check-circle mr-2 text-success"></i>
+      Accept Bid
+    </h3>
+    <%= form_with url: accept_admin_bid_path(@bid), method: :post, local: true, class: "space-y-4" do |f| %>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        <div>
+          <p class="font-medium">This will:</p>
+          <ul class="list-disc list-inside text-sm mt-1">
+            <li>Create a new project from this bid</li>
+            <li>Create a 50% deposit invoice (draft)</li>
+            <li>Mark the bid as accepted</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Assign to (optional)</span>
+        </label>
+        <%= select_tag :assignee_id,
+            options_from_collection_for_select(User.order(:name), :id, :name),
+            { prompt: "Unassigned", class: "select select-bordered" } %>
+        <label class="label">
+          <span class="label-text-alt">Select a team member to assign this project to</span>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('accept-modal').close()">Cancel</button>
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-check mr-1"></i> Accept & Create Project
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<!-- Edit Modal -->
+<dialog id="edit-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">
+      <i class="fas fa-edit mr-2 text-primary"></i>
+      Edit <span id="edit-section-name"></span>
+    </h3>
+    <%= form_with url: update_section_admin_bid_path(@bid), method: :patch, local: true, class: "space-y-4" do |f| %>
+      <input type="hidden" name="section" id="edit-section-field">
+
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">Content</span>
+        </label>
+        <textarea name="content" id="edit-content" class="textarea textarea-bordered h-40" placeholder="Enter content..."></textarea>
+      </div>
+
+      <div class="divider">OR use SaaSless Agent to help</div>
+
+      <div class="form-control">
+        <label class="label">
+          <span class="label-text font-medium">SaaSless Agent Prompt</span>
+        </label>
+        <textarea name="ai_prompt" id="ai-prompt" class="textarea textarea-bordered h-20" placeholder="Describe what changes you want... e.g., 'Make this more concise' or 'Add more detail about security features'"></textarea>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('edit-modal').close()">Cancel</button>
+        <button type="submit" name="use_ai" value="false" class="btn btn-outline">Save Manual Edit</button>
+        <button type="submit" name="use_ai" value="true" class="btn btn-primary">
+          <i class="fas fa-robot mr-1"></i> Apply with SaaSless Agent
+        </button>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button>close</button>
+  </form>
+</dialog>
+
+<% development_items = @line_items.select(&:development?) %>
+<% system_costs = @line_items.select(&:system_cost?) %>
+
+<!-- Customer View Tab (what customer sees - NO hours breakdown) -->
+<div class="tab-panel" data-panel="customer">
+  <% if @bid.requirements_summary.present? %>
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body">
+        <div class="flex justify-between items-start">
+          <h3 class="card-title text-base">
+            <i class="fas fa-file-alt mr-2 text-primary"></i>
+            Project Overview
+          </h3>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="openEditModal('requirements_summary', <%= @bid.requirements_summary.to_json %>)">
+            <i class="fas fa-edit"></i>
+          </button>
+        </div>
+        <p class="whitespace-pre-wrap text-sm text-base-content/80 mt-2"><%= @bid.requirements_summary %></p>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Features/Deliverables List (Customer-facing) -->
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <div class="flex justify-between items-start">
+        <h3 class="card-title text-base">
+          <i class="fas fa-check-circle mr-2 text-primary"></i>
+          What You're Getting
+        </h3>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="openEditModal('features_list', <%= (@bid.features_list || []).join("\n").to_json %>)">
+          <i class="fas fa-edit"></i>
+        </button>
+      </div>
+      <div class="mt-4">
+        <% if @bid.features_list.present? %>
+          <ul class="space-y-2">
+            <% @bid.features_list.each do |feature| %>
+              <li class="flex items-start gap-2">
+                <i class="fas fa-check text-success mt-1"></i>
+                <span><%= feature %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <ul class="space-y-2">
+            <% development_items.each do |item| %>
+              <li class="flex items-start gap-2">
+                <i class="fas fa-check text-success mt-1"></i>
+                <span><%= item.description.gsub(/^Phase \d+:\s*/, '').gsub(/^\w+ & \w+ - /, '') %></span>
+              </li>
+            <% end %>
+          </ul>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly System Costs (Customer View - Estimates) -->
+  <% if system_costs.any? %>
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body">
+        <div class="flex justify-between items-start">
+          <h3 class="card-title text-base">
+            <i class="fas fa-server mr-2 text-primary"></i>
+            Estimated Monthly Infrastructure Costs
+          </h3>
+          <%= link_to new_admin_bid_line_item_path(@bid, type: "system_cost"), class: "btn btn-ghost btn-xs" do %>
+            <i class="fas fa-plus"></i>
+          <% end %>
+        </div>
+        <div class="alert alert-warning py-2 mt-2 mb-4">
+          <i class="fas fa-info-circle"></i>
+          <span class="text-sm">These are estimated costs based on typical usage. Actual costs may vary based on your application's usage and scale.</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr><th>Service</th><th>Type</th><th class="text-right">Est. Monthly Cost</th></tr>
+            </thead>
+            <tbody>
+              <% system_costs.each do |li| %>
+                <tr>
+                  <td>
+                    <%= li.description %>
+                    <% if li.is_new_system %>
+                      <span class="badge badge-info badge-xs ml-1">New</span>
+                    <% else %>
+                      <span class="badge badge-ghost badge-xs ml-1">Existing</span>
+                    <% end %>
+                  </td>
+                  <td class="text-sm text-base-content/60"><%= li.system_category || "Infrastructure" %></td>
+                  <td class="text-right font-medium"><%= number_to_currency(li.display_price) %>/mo</td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="2">Estimated Monthly Total</td>
+                <td class="text-right"><%= number_to_currency(system_costs.sum(&:display_price)) %>/mo</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Grand Total (Customer View) -->
+  <div class="card bg-primary text-primary-content shadow mb-6">
+    <div class="card-body">
+      <div class="flex justify-between items-center">
+        <div>
+          <h3 class="text-lg font-bold">Your Investment</h3>
+          <p class="text-sm opacity-80">One-time development<%= " + estimated first month infrastructure" if system_costs.any? %></p>
+        </div>
+        <div class="text-right">
+          <div class="text-3xl font-bold"><%= number_to_currency(@bid.total) %></div>
+          <% if system_costs.any? %>
+            <div class="text-sm opacity-80">+ ~<%= number_to_currency(system_costs.sum(&:display_price)) %>/mo ongoing</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @bid.notes.present? %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex justify-between items-start">
+          <h3 class="card-title text-base">Additional Notes</h3>
+          <button type="button" class="btn btn-ghost btn-xs" onclick="openEditModal('notes', <%= @bid.notes.to_json %>)">
+            <i class="fas fa-edit"></i>
+          </button>
+        </div>
+        <p class="whitespace-pre-wrap mt-2"><%= @bid.notes %></p>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Internal Details Tab (admin only, never in PDF) -->
+<div class="tab-panel hidden" data-panel="internal">
+  <!-- Hours Breakdown by Category -->
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <div class="flex justify-between items-center">
+        <h3 class="card-title text-base">
+          <i class="fas fa-chart-pie mr-2 text-primary"></i>
+          Hours Breakdown by Work Type
+        </h3>
+        <%= link_to new_admin_bid_line_item_path(@bid, type: "development"), class: "btn btn-ghost btn-xs" do %>
+          <i class="fas fa-plus mr-1"></i> Add Item
+        <% end %>
+      </div>
+      <% hours_by_category = @bid.hours_by_category %>
+      <% if hours_by_category.any? %>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+          <% hours_by_category.each do |category, hours| %>
+            <div class="stat bg-base-200 rounded-lg p-3">
+              <div class="stat-title text-xs truncate"><%= category %></div>
+              <div class="stat-value text-lg"><%= hours %> hrs</div>
+              <div class="stat-desc"><%= number_to_percentage((hours / @bid.development_hours_total.to_f * 100), precision: 0) rescue "0%" %></div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- Detailed Task Table -->
+      <div class="overflow-x-auto mt-6">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th class="w-8">#</th>
+              <th>Task / Phase</th>
+              <th class="w-32">Category</th>
+              <th class="w-20 text-right">Hours</th>
+              <th class="w-24 text-right">Rate</th>
+              <th class="w-28 text-right">Subtotal</th>
+              <th class="w-20">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% development_items.each do |li| %>
+              <tr id="line_item_<%= li.id %>">
+                <td><%= li.position %></td>
+                <td><%= li.description %></td>
+                <td><span class="badge badge-outline badge-sm text-xs whitespace-nowrap"><%= li.work_category_label %></span></td>
+                <td class="text-right"><%= li.hours %></td>
+                <td class="text-right"><%= number_to_currency(li.rate) %></td>
+                <td class="text-right font-medium"><%= number_to_currency(li.subtotal) %></td>
+                <td class="flex gap-1">
+                  <%= link_to edit_admin_bid_line_item_path(@bid, li), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-edit"></i>
+                  <% end %>
+                  <%= button_to admin_bid_line_item_path(@bid, li),
+                      method: :delete,
+                      class: "btn btn-ghost btn-xs text-error",
+                      data: {
+                        turbo_confirm: "Delete this line item?",
+                        turbo_submits_with: "<i class='fas fa-spinner fa-spin'></i>"
+                      } do %>
+                    <i class="fas fa-trash"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot>
+            <tr class="font-bold">
+              <td colspan="3">Development Total</td>
+              <td class="text-right"><%= development_items.sum(&:hours) %> hrs</td>
+              <td class="text-right"><%= number_to_currency(@bid.hourly_rate) %>/hr</td>
+              <td class="text-right"><%= number_to_currency(@bid.development_subtotal) %></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Costs Internal View -->
+  <% if system_costs.any? %>
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body">
+        <div class="flex justify-between items-center">
+          <h3 class="card-title text-base">
+            <i class="fas fa-server mr-2 text-primary"></i>
+            System Costs (Internal View)
+          </h3>
+          <%= link_to new_admin_bid_line_item_path(@bid, type: "system_cost"), class: "btn btn-ghost btn-xs" do %>
+            <i class="fas fa-plus mr-1"></i> Add Cost
+          <% end %>
+        </div>
+        <div class="overflow-x-auto mt-4">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Description</th>
+                <th class="w-28">Type</th>
+                <th class="w-24 text-right">Your Cost</th>
+                <th class="w-28 text-right">Customer Price</th>
+                <th class="w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% system_costs.each do |li| %>
+                <tr id="line_item_<%= li.id %>">
+                  <td>
+                    <%= li.description %>
+                    <% if li.is_new_system %>
+                      <span class="badge badge-info badge-xs">New</span>
+                    <% end %>
+                  </td>
+                  <td class="text-xs"><%= li.system_category || "Infrastructure" %></td>
+                  <td class="text-right text-base-content/60"><%= number_to_currency(li.unit_cost) %></td>
+                  <td class="text-right font-medium"><%= number_to_currency(li.display_price) %>/mo</td>
+                  <td class="flex gap-1">
+                    <%= link_to edit_admin_bid_line_item_path(@bid, li), class: "btn btn-ghost btn-xs" do %>
+                      <i class="fas fa-edit"></i>
+                    <% end %>
+                    <%= button_to admin_bid_line_item_path(@bid, li),
+                        method: :delete,
+                        class: "btn btn-ghost btn-xs text-error",
+                        data: {
+                          turbo_confirm: "Delete this system cost?",
+                          turbo_submits_with: "<i class='fas fa-spinner fa-spin'></i>"
+                        } do %>
+                      <i class="fas fa-trash"></i>
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="2">Monthly Total</td>
+                <td class="text-right text-base-content/60"><%= number_to_currency(system_costs.sum(&:unit_cost)) %></td>
+                <td class="text-right"><%= number_to_currency(system_costs.sum(&:display_price)) %>/mo</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Internal Notes -->
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <div class="flex justify-between items-start">
+        <h3 class="card-title text-base">
+          <i class="fas fa-sticky-note mr-2 text-primary"></i>
+          Internal Notes
+        </h3>
+        <button type="button" class="btn btn-ghost btn-xs" onclick="openEditModal('internal_notes', <%= (@bid.internal_notes || '').to_json %>)">
+          <i class="fas fa-edit"></i>
+        </button>
+      </div>
+      <% if @bid.internal_notes.present? %>
+        <p class="whitespace-pre-wrap mt-2"><%= @bid.internal_notes %></p>
+      <% else %>
+        <p class="text-base-content/60 mt-2">No internal notes added yet. Click edit to add notes.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="alert alert-warning">
+    <i class="fas fa-eye-slash"></i>
+    <span>Everything on this tab is internal only and will never appear in PDFs or customer-facing documents.</span>
+  </div>
+</div>

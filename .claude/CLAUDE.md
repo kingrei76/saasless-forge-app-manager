@@ -1,164 +1,119 @@
-# Leonardo Starting Project
+# SaaSless Forge — App Management Admin
 
-This is a starting Leonardo project that has a Ruby on Rails application + a starter LangGraph agent already implemented. This is the artifact/deliverable that our coding agent, Leonardo, is iterating on when LlamaBot, which is our FastAPI Uvicorn runtime that runs LangGraph, is running.
-
-This repository is an **overlay codebase** for apps built with the LlamaPress/Leonardo system. It contains only the user-owned parts of a Ruby on Rails project and an AI agent through LangGraph (Python). The Rails **framework skeleton** (Gemfile, bin, boot files, vendor, etc.) lives in the public `llamapress-simple` repo and is bundled into the Docker base image.
-
-The design keeps this repo small, safe for AI-assisted editing, and still easy to "eject" into a normal Rails workflow by combining it with the skeleton.
-
-See the starting rails project and base image here: https://github.com/kodykendall/llamapress-simple
+A standalone Ruby on Rails 7.2 application for managing apps, clients, billing, infrastructure, and projects.
 
 ---
 
-## ../LlamaBot implementation (Agent Orchestration) repository & code. 
+## Stack
 
-You can also look in to see how the agent orchestration works for the actual left-hand chat interface implementation, or view the Github Repo at https://github.com/KodyKendall/LlamaBot
+- **Ruby 3.3.4 / Rails 7.2** — MVC framework
+- **PostgreSQL 16** — database
+- **Redis** — ActionCable in production
+- **Devise** — authentication
+- **Pundit** — authorization
+- **Stripe** — billing & invoicing
+- **SolidQueue** — background jobs (database-backed)
+- **Tailwind CSS + DaisyUI** — UI (loaded from CDN, not gems)
+- **Importmap** — JavaScript module loading (no Node build step)
+- **Stimulus** — JavaScript controllers
+- **Turbo** — Hotwire page updates
 
-The file might exist in `../LlamaBot` `cd ../LlamaBot` (if the user has cloned LlamaBot locally it will be on the filesystem). It's worth checking. It might just be accessed through the docker image in docker-compose.yml though.
+---
 
-## Two Docker Compose Files
+## Project Structure
 
-| File | Purpose | Rails Source |
-|------|---------|--------------|
-| `docker-compose.yml` | Production/deployment | Pre-built image `kody06/llamapress-simple:X.X.X` |
-| `docker-compose-dev.yml` | Local development | Builds from `../LlamaPress-Simple` |
+```
+app/
+  controllers/
+    admin/           # All admin CRUD controllers
+    api/             # External API endpoints
+    users/           # OAuth callbacks, registrations
+  models/            # ActiveRecord models
+  views/
+    admin/           # Admin views (uses admin.html.erb layout)
+    devise/          # Auth views
+    layouts/         # application.html.erb, admin.html.erb, print.html.erb
+  services/          # Business logic (Stripe, GitHub, Render, billing)
+  jobs/              # SolidQueue background jobs
+  helpers/
+  javascript/
+    controllers/     # Stimulus controllers
 
-**Important:** When using `docker-compose-dev.yml`, changes to `LlamaPress-Simple` (like updating `llama_bot_rails`) require rebuilding:
+config/
+  routes.rb          # All routes; admin namespace at /admin
+  database.yml       # PostgreSQL config
+  importmap.rb       # JS module pinning
+  puma.rb            # Web server config
+  environments/      # development.rb, production.rb, test.rb
+  initializers/      # stripe.rb, solid_queue.rb, active_record_encryption.rb
+
+db/
+  migrate/           # All migrations
+  schema.rb          # Current schema
+  seeds.rb           # Default admin user + settings
+
+spec/                # RSpec tests
+bin/                 # Rails binstubs + Docker helper scripts
+```
+
+---
+
+## Running the App
+
+### Docker (recommended)
 ```bash
-docker compose -f docker-compose-dev.yml build llamapress
-docker compose -f docker-compose-dev.yml up -d llamapress
+cp .env.example .env   # fill in secrets
+docker compose up -d
+open http://localhost:3000
 ```
 
-### Hot-reloading the `llama_bot_rails` gem (dev only)
-
-For faster iteration on the gem without rebuilding, `docker-compose-dev.yml` mounts the gem directly:
-```yaml
-- ../LlamaPress-Simple/vendor/llama_bot_rails:/rails/vendor/llama_bot_rails
+### Local
+```bash
+cp .env.example .env
+bundle install
+bin/rails db:prepare
+bin/rails server
 ```
 
-This means changes to `../LlamaPress-Simple/vendor/llama_bot_rails` are reflected immediately:
-- **Views/Controllers**: Rails auto-reloads in development
-- **Assets (CSS/JS)**: Restart the server: `docker compose restart llamapress`
-- **Migrations**: Run inside the container:
-  ```bash
-  docker compose exec llamapress bash -c "rails llama_bot_rails:install:migrations && rails db:migrate"
-  ```
-
-**Note:** If adding new assets from the gem, you may need to update `rails/app/assets/config/manifest.js`:
-```js
-//= link llama_bot_rails/application.css
-```
-
----
-
-## Quick Start for Devs:
-```
-curl -fsSL "https://raw.githubusercontent.com/KodyKendall/Leonardo/refs/heads/main/bin/install/dev" -o install_leonardo_local.sh && bash install_leonardo_local.sh
-```
-
-## Quick Start Dev
-```
-clone your repo
-bash bin/dev # this runs docker compose up on the docker-compose-dev.yml file.
-open localhost:8000
-```
-
-## Repository Layout
-```
-leonardo/
-  docker-compose.yml        # Base compose definition (services, volumes)
-  docker-compose.dev.yml    # Local dev overrides
-  docker-compose.prod.yml   # Production overrides
-  compose.vars              # Tracked env (image refs, flags)
-  .env.example              # Secrets template (user fills in .env)
-
-  rails/
-    app/                    # Application code (models, controllers, views, jobs)
-    db/                     # Migrations, schema
-    config/                 # Safe subset of configs (see below)
-    test/ or spec/          # User tests (optional, recommended)
-
-  langgraph/
-    agents/                    # User-editable AI agent code
-      - leo/                   # Default agent embedded in Rails application 
-        - nodes.py             # LangGraph agent logic
-
-  scripts/
-    eject.sh                # TODO: Build full Rails app from skeleton + overlay
-    smoke.sh                # TODO: CI checks using base image
-    add-gem.md              # TODO: Human instructions for adding gems
-
-  README.md
+### Helper Scripts
+```bash
+bin/dev              # docker compose up -d
+bin/rails_bash       # shell into web container
+bin/rails_console    # Rails console
+bin/rails_logs       # tail web logs
+bin/restart          # restart web service
 ```
 
 ---
 
-## Config Files Policy
+## Key Patterns
 
-This repo includes only the config files users may reasonably need to edit or carry when ejecting. Access rules are enforced by Docker mounts:
-
-* **Writable (RW)**
-
-  * `config/routes.rb`
-  * `config/initializers/llama_bot_rails.rb` (for custom LangGraph integrations)
-
-* **Read-only (RO)**
-
-  * `config/storage.yml` (for S3/local config)
-  * `config/environments/*.rb`
-  * `config/importmap.rb`
-  * `config/puma.rb`
-  * `config/cable.yml`
-  * `config/initializers/assets.rb`
-  * `config/initializers/content_security_policy.rb`
-  * `config/initializers/devise.rb` (and other gem initializers)
-
-* **Excluded**
-
-  * `config/database.yml`
-  * `config/credentials.yml.enc`
-  * `config/master.key`
-  * `config/application.rb`, `boot.rb`, `environment.rb` (provided by skeleton)
+- **Admin namespace**: All admin controllers inherit from `Admin::BaseController` which enforces authentication and admin role.
+- **Root route**: `root "admin/dashboard#index"` — Devise redirects unauthenticated users to sign-in.
+- **Layouts**: Admin views use `layouts/admin.html.erb`; other views use `layouts/application.html.erb`.
+- **Background jobs**: Use SolidQueue (database-backed). Jobs defined in `app/jobs/`, recurring schedule in `config/recurring.yml`.
+- **Stripe integration**: Webhook at `POST /webhooks/stripe`. Services in `app/services/stripe_*.rb`.
+- **Dev auth bypass**: Set `SKIP_AUTH=true` in `.env` for dev login at `/dev_login`.
+- **API authentication**: Bearer token via `api_token` field on User model.
 
 ---
 
-## Guardrails for Leonardo
+## Environment Variables
 
-Leonardo, the AI coding agent, runs in its own container and commits changes via Git. Guardrails:
-
-* **File access** limited by Docker mounts (RW vs RO vs excluded).
-* **Git hooks** prevent commits to forbidden files.
-* **Prod mounts** are always read-only; redeploy is required to apply changes.
-
----
-
-## Adding Gems
-
-* Gemfile, Gemfile.lock, bin/, and vendor/ are **not in this repo**.
-* They live in the **base skeleton** and Docker image.
-* To add a gem:
-
-  1. Clone the `llamapress-simple` repo.
-  2. Modify `Gemfile` and run `bundle lock`.
-  3. Build and push a new Docker image (`kody06/llamapress-simple:<tag>`).
-  4. Update `RAILS_IMAGE_REF` in `compose.vars`.
-  5. Commit and redeploy.
-
-Leonardo cannot add gems — only humans can, via the image pipeline.
+See `.env.example` for the full list. Key variables:
+- `DATABASE_URL` / `POSTGRES_PASSWORD` — database connection
+- `SECRET_KEY_BASE` — Rails secret
+- `STRIPE_API_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` — Stripe billing
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — OAuth
+- `ACTIVE_RECORD_ENCRYPTION_*` — encrypted attributes
+- `REDIS_URL` — ActionCable in production
+- `SKIP_AUTH` — dev auth bypass
 
 ---
 
-## Deployment Philosophy
+## Deployment
 
-* **Local dev**: Run `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`. Rails reloads overlay changes; agent reloads with `--reload`.
-* **Production**: Run `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`. Rails overlay mounted RO; agent runs in hardened container. Deploy by bumping `IMAGE_REF` or pulling new overlay commits.
-
----
-
-## Reproducibility
-
-Your app is defined by the tuple:
-
-**(Base skeleton/image digest + overlay Git commit)**
-
-This ensures full reproducibility and clear separation of concerns.
+The app includes a `Dockerfile` for containerized deployment. For Render:
+- `config/environments/production.rb` includes `RENDER_EXTERNAL_HOSTNAME` host allowlisting
+- `config/database.yml` production uses `DATABASE_URL`
+- Static files are served by Rails (`config.public_file_server.enabled = true`)

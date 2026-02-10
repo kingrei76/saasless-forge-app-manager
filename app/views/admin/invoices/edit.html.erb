@@ -1,0 +1,30 @@
+<h2 class="text-2xl font-bold mb-6">Edit Invoice #<%= @invoice.id %></h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <%= form_with(model: [:admin, @invoice], class: "space-y-4") do |f| %>
+      <div class="form-control">
+        <%= f.label :client_id, "Client", class: "label" %>
+        <%= f.select :client_id, options_from_collection_for_select(@clients, :id, :name, @invoice.client_id), {}, class: "select select-bordered w-full" %>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-control">
+          <%= f.label :period_start, class: "label" %>
+          <%= f.date_field :period_start, class: "input input-bordered w-full" %>
+        </div>
+        <div class="form-control">
+          <%= f.label :period_end, class: "label" %>
+          <%= f.date_field :period_end, class: "input input-bordered w-full" %>
+        </div>
+      </div>
+      <div class="form-control">
+        <%= f.label :status, class: "label" %>
+        <%= f.select :status, %w[draft sent paid void], {}, class: "select select-bordered w-full" %>
+      </div>
+      <div class="flex gap-2">
+        <%= f.submit class: "btn btn-primary" %>
+        <%= link_to "Cancel", admin_invoice_path(@invoice), class: "btn btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>

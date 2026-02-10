@@ -1,0 +1,381 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold"><%= @client.name %></h2>
+  <div class="flex gap-2">
+    <%= link_to edit_admin_client_path(@client), class: "btn btn-outline btn-sm" do %>
+      <i class="fas fa-edit mr-1"></i> Edit
+    <% end %>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Details</h3>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><span class="opacity-60">Email</span><p class="font-medium"><%= @client.email || "—" %></p></div>
+        <div><span class="opacity-60">Company</span><p class="font-medium"><%= @client.company || "—" %></p></div>
+        <div><span class="opacity-60">Markup</span><p class="font-medium"><%= @client.markup_percentage ? "#{@client.markup_percentage}%" : "Default (#{Setting[:default_markup_percentage] || 30}%)" %></p></div>
+        <div><span class="opacity-60">Stripe ID</span><p class="font-medium font-mono text-xs"><%= @client.stripe_customer_id || "—" %></p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outstanding Balance -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Billing Summary</h3>
+      <div class="stat p-0">
+        <div class="stat-title">Outstanding Balance</div>
+        <div class="stat-value text-lg <%= @outstanding_balance > 0 ? 'text-warning' : 'text-success' %>">
+          <%= number_to_currency(@outstanding_balance) %>
+        </div>
+        <div class="stat-desc">Draft & sent invoices</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Recurring Billing -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <div class="flex justify-between items-center">
+      <h3 class="card-title text-base">Recurring Billing</h3>
+      <% if @client.recurring_invoice %>
+        <%= link_to admin_recurring_invoice_path(@client.recurring_invoice), class: "btn btn-ghost btn-xs" do %>
+          <i class="fas fa-eye mr-1"></i> View
+        <% end %>
+      <% else %>
+        <%= link_to new_admin_recurring_invoice_path(recurring_invoice: { client_id: @client.id }), class: "btn btn-primary btn-xs" do %>
+          <i class="fas fa-plus mr-1"></i> Set Up
+        <% end %>
+      <% end %>
+    </div>
+    <% if @client.recurring_invoice %>
+      <div class="grid grid-cols-3 gap-4 mt-2 text-sm">
+        <div>
+          <span class="opacity-60">Status</span>
+          <p><span class="badge <%= @client.recurring_invoice.status_badge_class %> badge-sm"><%= @client.recurring_invoice.status.capitalize %></span></p>
+        </div>
+        <div>
+          <span class="opacity-60">Collection</span>
+          <p class="font-medium">
+            <% if @client.recurring_invoice.charge_automatically? %>
+              <i class="fas fa-credit-card mr-1"></i> Auto-charge
+            <% else %>
+              <i class="fas fa-envelope mr-1"></i> Send Invoice
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="opacity-60">Next Billing</span>
+          <p class="font-medium"><%= @client.recurring_invoice.next_billing_date&.strftime("%b %d, %Y") || "Not scheduled" %></p>
+        </div>
+      </div>
+    <% else %>
+      <p class="text-sm opacity-60 mt-2">No recurring billing configured for this client.</p>
+    <% end %>
+  </div>
+</div>
+
+<!-- Projects & Bids Summary -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Bids Summary -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <div class="flex justify-between items-center">
+        <h3 class="card-title text-base">Bids</h3>
+        <%= link_to new_admin_bid_path(client_id: @client.id), class: "btn btn-primary btn-xs" do %>
+          <i class="fas fa-plus mr-1"></i> New Bid
+        <% end %>
+      </div>
+      <div class="grid grid-cols-4 gap-2 mt-4">
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Draft</div>
+          <div class="stat-value text-lg"><%= @bids_by_status["draft"] || 0 %></div>
+        </div>
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Sent</div>
+          <div class="stat-value text-lg"><%= @bids_by_status["sent"] || 0 %></div>
+        </div>
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Accepted</div>
+          <div class="stat-value text-lg text-success"><%= @bids_by_status["accepted"] || 0 %></div>
+        </div>
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Rejected</div>
+          <div class="stat-value text-lg text-error"><%= @bids_by_status["rejected"] || 0 %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Summary -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Projects</h3>
+      <div class="grid grid-cols-3 gap-2 mt-4">
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Active</div>
+          <div class="stat-value text-lg"><%= @active_projects.count %></div>
+        </div>
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Completed</div>
+          <div class="stat-value text-lg text-success"><%= @completed_projects.count %></div>
+        </div>
+        <div class="stat bg-base-200 rounded-lg p-2 text-center">
+          <div class="stat-title text-xs">Hours Accuracy</div>
+          <% if @hours_accuracy %>
+            <div class="stat-value text-lg <%= @hours_accuracy > 0 ? 'text-error' : 'text-success' %>">
+              <%= @hours_accuracy > 0 ? '+' : '' %><%= @hours_accuracy %>%
+            </div>
+          <% else %>
+            <div class="stat-value text-lg">—</div>
+          <% end %>
+        </div>
+      </div>
+      <% if @hours_accuracy %>
+        <p class="text-xs opacity-60 mt-2 text-center">
+          <% if @hours_accuracy > 0 %>
+            Projects average <%= @hours_accuracy %>% more time than estimated
+          <% elsif @hours_accuracy < 0 %>
+            Projects average <%= @hours_accuracy.abs %>% less time than estimated
+          <% else %>
+            Projects are on target with estimates
+          <% end %>
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Active Projects -->
+<% if @active_projects.any? %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base">Active Projects (<%= @active_projects.count %>)</h3>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Stage</th>
+              <th>Assignee</th>
+              <th>Hours</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @active_projects.each do |project| %>
+              <tr>
+                <td class="font-medium">
+                  <%= link_to project.title, admin_project_path(project), class: "link link-primary" %>
+                </td>
+                <td>
+                  <span class="badge badge-outline badge-sm"><%= project.stage_label %></span>
+                </td>
+                <td class="text-sm"><%= project.assignee&.name || "Unassigned" %></td>
+                <td class="text-sm">
+                  <%= project.actual_hours %>
+                  <% if project.estimated_hours %>
+                    / <%= project.estimated_hours %>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to admin_project_path(project), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Completed Projects -->
+<% if @completed_projects.any? %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base">Completed Projects (<%= @completed_projects.count %>)</h3>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Project</th>
+              <th>Est. Hours</th>
+              <th>Actual Hours</th>
+              <th>Variance</th>
+              <th>Completed</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @completed_projects.each do |project| %>
+              <tr>
+                <td class="font-medium">
+                  <%= link_to project.title, admin_project_path(project), class: "link link-primary" %>
+                </td>
+                <td><%= project.estimated_hours || "—" %></td>
+                <td><%= project.actual_hours %></td>
+                <td>
+                  <% variance = project.hours_variance_percentage %>
+                  <% if variance %>
+                    <span class="<%= variance > 0 ? 'text-error' : 'text-success' %>">
+                      <%= variance > 0 ? '+' : '' %><%= variance %>%
+                    </span>
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+                <td class="text-sm"><%= project.updated_at.strftime("%b %d, %Y") %></td>
+                <td>
+                  <%= link_to admin_project_path(project), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Project Invoices -->
+<% if @project_invoices.any? %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base">Project Invoices</h3>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Project</th>
+              <th>Type</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @project_invoices.each do |invoice| %>
+              <tr>
+                <td><%= invoice.id %></td>
+                <td><%= invoice.project ? link_to(invoice.project.title, admin_project_path(invoice.project), class: "link link-primary") : "—" %></td>
+                <td>
+                  <% type_badge = invoice.deposit? ? "badge-primary" : "badge-success" %>
+                  <span class="badge <%= type_badge %> badge-sm"><%= invoice.payment_type_label %></span>
+                </td>
+                <td class="font-medium"><%= number_to_currency(invoice.total) %></td>
+                <td>
+                  <% badge_class = { "draft" => "badge-ghost", "sent" => "badge-info", "paid" => "badge-success", "void" => "badge-error" }[invoice.status] %>
+                  <span class="badge <%= badge_class %> badge-sm"><%= invoice.status.capitalize %></span>
+                </td>
+                <td>
+                  <%= link_to admin_invoice_path(invoice), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Infrastructure Invoices -->
+<% if @infrastructure_invoices.any? %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base">Monthly Infrastructure Invoices</h3>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Period</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @infrastructure_invoices.each do |invoice| %>
+              <tr>
+                <td><%= invoice.id %></td>
+                <td>
+                  <% if invoice.period_start && invoice.period_end %>
+                    <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+                <td class="font-medium"><%= number_to_currency(invoice.total) %></td>
+                <td>
+                  <% badge_class = { "draft" => "badge-ghost", "sent" => "badge-info", "paid" => "badge-success", "void" => "badge-error" }[invoice.status] %>
+                  <span class="badge <%= badge_class %> badge-sm"><%= invoice.status.capitalize %></span>
+                </td>
+                <td>
+                  <%= link_to admin_invoice_path(invoice), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Assigned Apps -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-base">Assigned Apps (<%= @app_assignments.count %>)</h3>
+
+    <% if @app_assignments.any? %>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr><th>App</th><th>Custom Markup</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            <% @app_assignments.each do |assignment| %>
+              <tr>
+                <td><%= link_to assignment.app.name, admin_app_path(assignment.app), class: "link link-primary" %></td>
+                <td>
+                  <%= form_with(model: [:admin, @client, assignment], method: :patch, class: "flex gap-2 items-center") do |f| %>
+                    <%= f.number_field :markup_percentage, value: assignment.markup_percentage, class: "input input-bordered input-xs w-20", step: 0.01, placeholder: "Default" %>
+                    <%= f.submit "Save", class: "btn btn-ghost btn-xs" %>
+                  <% end %>
+                </td>
+                <td>
+                  <%= button_to admin_client_app_assignment_path(@client, assignment), method: :delete, class: "btn btn-ghost btn-xs text-error" do %>
+                    <i class="fas fa-times"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if @available_apps.any? %>
+      <div class="divider text-sm">Assign New App</div>
+      <%= form_with(model: [:admin, @client, AppAssignment.new], url: admin_client_app_assignments_path(@client), class: "flex gap-2 items-end") do |f| %>
+        <div class="form-control flex-1">
+          <%= f.select :app_id, options_from_collection_for_select(@available_apps, :id, :name), { prompt: "Select an app..." }, class: "select select-bordered select-sm" %>
+        </div>
+        <%= f.submit "Assign", class: "btn btn-primary btn-sm" %>
+      <% end %>
+    <% end %>
+  </div>
+</div>

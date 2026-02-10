@@ -1,0 +1,14 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Log Time</h2>
+    <p class="text-sm opacity-60">
+      <%= link_to @project.title, admin_project_path(@project), class: "link link-primary" %>
+    </p>
+  </div>
+</div>
+
+<div class="card bg-base-100 shadow max-w-lg">
+  <div class="card-body">
+    <%= render "form" %>
+  </div>
+</div>

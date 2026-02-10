@@ -1,0 +1,116 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Review Invoice #<%= @invoice.id %></h2>
+    <p class="text-sm opacity-60">Confirm details before sending to Stripe</p>
+  </div>
+  <%= link_to admin_invoice_path(@invoice), class: "btn btn-ghost btn-sm" do %>
+    <i class="fas fa-arrow-left mr-1"></i> Back to Invoice
+  <% end %>
+</div>
+
+<div class="alert alert-warning mb-6">
+  <i class="fas fa-exclamation-triangle"></i>
+  <span>This will create a Stripe invoice and send it to the customer. This action cannot be undone.</span>
+</div>
+
+<!-- Client & Billing Info -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-sm opacity-60">Client</h3>
+      <p class="text-lg font-medium"><%= @invoice.client.name %></p>
+      <p class="text-sm opacity-60"><%= @invoice.client.email %></p>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-sm opacity-60">Collection Method</h3>
+      <p class="text-lg font-medium">
+        <% if @invoice.client.respond_to?(:stripe_default_payment_method_id) && @invoice.client.stripe_default_payment_method_id.present? %>
+          <i class="fas fa-credit-card mr-1 text-primary"></i> Auto-charge
+        <% else %>
+          <i class="fas fa-envelope mr-1"></i> Send Invoice
+        <% end %>
+      </p>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-sm opacity-60">Period</h3>
+      <p class="text-lg font-medium">
+        <% if @invoice.period_start && @invoice.period_end %>
+          <%= @invoice.period_start.strftime("%b %d") %> - <%= @invoice.period_end.strftime("%b %d, %Y") %>
+        <% elsif @invoice.project %>
+          <%= @invoice.project.title %>
+        <% else %>
+          —
+        <% end %>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Line Items -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-base">Line Items</h3>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <% if @invoice.invoice_type == "bid_based" %>
+              <th>Hours</th>
+              <th>Rate</th>
+            <% else %>
+              <th>App</th>
+              <th>Internal Cost</th>
+              <th>Markup %</th>
+            <% end %>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @line_items.each do |li| %>
+            <tr>
+              <td><%= li.description %></td>
+              <% if @invoice.invoice_type == "bid_based" %>
+                <td><%= li.hours %></td>
+                <td><%= number_to_currency(li.rate) %></td>
+              <% else %>
+                <td><%= li.app&.name || "—" %></td>
+                <td class="opacity-60"><%= number_to_currency(li.internal_cost) %></td>
+                <td><%= li.markup_percentage %>%</td>
+              <% end %>
+              <td class="font-medium"><%= number_to_currency(li.amount) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="font-bold text-lg">
+            <td>Total</td>
+            <% if @invoice.invoice_type == "bid_based" %>
+              <td></td>
+              <td></td>
+            <% else %>
+              <td></td>
+              <td><%= number_to_currency(@invoice.subtotal) %></td>
+              <td></td>
+            <% end %>
+            <td class="text-primary"><%= number_to_currency(@invoice.total) %></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="flex justify-end gap-3">
+  <%= link_to admin_invoice_path(@invoice), class: "btn btn-ghost" do %>
+    Cancel
+  <% end %>
+  <%= button_to send_to_stripe_admin_invoice_path(@invoice), method: :post, class: "btn btn-primary", data: { turbo_confirm: "Final confirmation: Send this invoice to Stripe?" } do %>
+    <i class="fas fa-paper-plane mr-1"></i> Confirm & Send to Stripe
+  <% end %>
+</div>

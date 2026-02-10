@@ -1,0 +1,220 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Recurring Billing: <%= @recurring_invoice.client.name %></h2>
+    <p class="text-sm opacity-60">
+      Created <%= @recurring_invoice.created_at.strftime("%b %d, %Y") %>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <% case @recurring_invoice.status %>
+    <% when "draft" %>
+      <%= button_to activate_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-success btn-sm", data: { turbo_confirm: "Activate recurring billing for #{@recurring_invoice.client.name}?" } do %>
+        <i class="fas fa-play mr-1"></i> Activate
+      <% end %>
+    <% when "active" %>
+      <%= button_to pause_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-warning btn-sm" do %>
+        <i class="fas fa-pause mr-1"></i> Pause
+      <% end %>
+    <% when "paused" %>
+      <%= button_to activate_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-success btn-sm" do %>
+        <i class="fas fa-play mr-1"></i> Resume
+      <% end %>
+      <%= button_to cancel_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-error btn-sm", data: { turbo_confirm: "Cancel recurring billing? This cannot be undone." } do %>
+        <i class="fas fa-times mr-1"></i> Cancel
+      <% end %>
+    <% end %>
+
+    <% unless @recurring_invoice.status == "cancelled" %>
+      <%= link_to edit_admin_recurring_invoice_path(@recurring_invoice), class: "btn btn-outline btn-sm" do %>
+        <i class="fas fa-edit mr-1"></i> Edit
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<% if params[:payment_setup] == "success" %>
+  <div class="alert alert-success mb-6">
+    <i class="fas fa-check-circle"></i>
+    <span>Payment method saved successfully! Auto-charge is now configured.</span>
+  </div>
+<% elsif params[:payment_setup] == "cancelled" %>
+  <div class="alert alert-warning mb-6">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>Payment method setup was cancelled.</span>
+  </div>
+<% end %>
+
+
+<!-- Status & Config Cards -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <!-- Status Card -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Status</h3>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="opacity-60">Status</span>
+          <p><span class="badge <%= @recurring_invoice.status_badge_class %>"><%= @recurring_invoice.status.capitalize %></span></p>
+        </div>
+        <div>
+          <span class="opacity-60">Client</span>
+          <p class="font-medium"><%= link_to @recurring_invoice.client.name, admin_client_path(@recurring_invoice.client), class: "link link-primary" %></p>
+        </div>
+        <div>
+          <span class="opacity-60">Next Billing Date</span>
+          <p class="font-medium">
+            <% if @recurring_invoice.next_billing_date %>
+              <%= @recurring_invoice.next_billing_date.strftime("%B %d, %Y") %>
+              <% if @recurring_invoice.next_billing_date <= Date.current && @recurring_invoice.status == "active" %>
+                <span class="badge badge-warning badge-xs ml-1">Due</span>
+              <% end %>
+            <% else %>
+              <span class="opacity-40">Not set</span>
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="opacity-60">Last Billed</span>
+          <p class="font-medium">
+            <% if @recurring_invoice.last_billed_date %>
+              <%= @recurring_invoice.last_billed_date.strftime("%B %d, %Y") %>
+            <% else %>
+              Never
+            <% end %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Config Card -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-base">Configuration</h3>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <span class="opacity-60">Collection Method</span>
+          <p class="font-medium">
+            <% if @recurring_invoice.charge_automatically? %>
+              <i class="fas fa-credit-card text-primary mr-1"></i> Auto-charge
+            <% else %>
+              <i class="fas fa-envelope mr-1"></i> Send Invoice
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="opacity-60">Billing Day</span>
+          <p class="font-medium"><%= @recurring_invoice.billing_day_of_month.ordinalize %> of each month</p>
+        </div>
+        <% if @recurring_invoice.send_invoice? %>
+          <div>
+            <span class="opacity-60">Days Until Due</span>
+            <p class="font-medium"><%= @recurring_invoice.days_until_due %> days</p>
+          </div>
+        <% end %>
+        <div>
+          <span class="opacity-60">Payment Method</span>
+          <p class="font-medium">
+            <% if @recurring_invoice.client.stripe_default_payment_method_id.present? %>
+              <span class="text-success"><i class="fas fa-check-circle mr-1"></i> Card on file</span>
+            <% else %>
+              <span class="text-warning"><i class="fas fa-exclamation-circle mr-1"></i> No payment method</span>
+            <% end %>
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <% if @recurring_invoice.client.stripe_default_payment_method_id.present? %>
+          <div class="flex items-center gap-3">
+            <span class="badge badge-success gap-1">
+              <i class="fas fa-check-circle"></i> Payment method on file
+            </span>
+          </div>
+        <% else %>
+          <div class="flex gap-2 flex-wrap">
+            <%= button_to send_payment_setup_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-primary btn-sm", data: { turbo_confirm: "Send the first infrastructure invoice to #{@recurring_invoice.client.name} (#{@recurring_invoice.client.email}) via Stripe? Their card will be saved when they pay." } do %>
+              <i class="fas fa-file-invoice-dollar mr-1"></i> Send Initial Invoice
+            <% end %>
+            <%= button_to setup_payment_method_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-outline btn-sm" do %>
+              <i class="fas fa-credit-card mr-1"></i> Set Up Card as Admin
+            <% end %>
+          </div>
+          <p class="text-xs opacity-50 mt-2">
+            "Send Initial Invoice" sends the first real bill via Stripe email. Customer's card is saved when they pay.
+          </p>
+        <% end %>
+      </div>
+
+      <% if @recurring_invoice.notes.present? %>
+        <div class="mt-4">
+          <span class="opacity-60 text-sm">Notes</span>
+          <p class="text-sm mt-1"><%= @recurring_invoice.notes %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<!-- Generated Invoices -->
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <h3 class="card-title text-base">Generated Invoices (<%= @invoices.count %>)</h3>
+    <% if @invoices.any? %>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Period</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Stripe Status</th>
+              <th>Paid At</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @invoices.each do |invoice| %>
+              <tr>
+                <td><%= invoice.id %></td>
+                <td>
+                  <% if invoice.period_start && invoice.period_end %>
+                    <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+                  <% else %>
+                    --
+                  <% end %>
+                </td>
+                <td class="font-medium"><%= number_to_currency(invoice.total) %></td>
+                <td>
+                  <span class="badge <%= invoice.status_badge_class %> badge-sm"><%= invoice.status.capitalize %></span>
+                </td>
+                <td>
+                  <% if invoice.stripe_status.present? %>
+                    <span class="text-xs font-mono"><%= invoice.stripe_status %></span>
+                  <% else %>
+                    <span class="opacity-40">--</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if invoice.paid_at %>
+                    <%= invoice.paid_at.strftime("%b %d, %Y") %>
+                  <% else %>
+                    <span class="opacity-40">--</span>
+                  <% end %>
+                </td>
+                <td>
+                  <%= link_to admin_invoice_path(invoice), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-eye"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-sm opacity-60 text-center py-4">No invoices generated yet.</p>
+    <% end %>
+  </div>
+</div>

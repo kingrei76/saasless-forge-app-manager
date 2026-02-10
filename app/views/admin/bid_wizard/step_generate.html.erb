@@ -1,0 +1,127 @@
+<div class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-2">Development Hours</h2>
+  <p class="text-base-content/60 mb-6">Review and adjust the SaaSless Agent-generated development tasks and hour estimates.</p>
+
+  <%= render "admin/bid_wizard/wizard_steps", current_step: "generate" %>
+
+  <%= form_with(url: admin_bid_wizard_path(@bid), method: :patch, class: "space-y-6", data: { controller: "wizard" }) do |f| %>
+
+    <% if @bid.requirements_summary.present? %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">
+            <i class="fas fa-file-alt text-primary mr-2"></i>
+            Requirements Summary
+          </h3>
+          <p class="whitespace-pre-wrap text-sm text-base-content/80"><%= @bid.requirements_summary %></p>
+        </div>
+      </div>
+    <% end %>
+
+    <div class="card bg-base-100 shadow" data-controller="line-items">
+      <div class="card-body">
+        <div class="flex justify-between items-center">
+          <h3 class="card-title text-lg">
+            <i class="fas fa-clock text-primary mr-2"></i>
+            Development Tasks
+          </h3>
+          <div class="flex gap-2">
+            <%= link_to regenerate_suggestions_admin_bid_wizard_path(@bid),
+                class: "btn btn-ghost btn-sm",
+                data: { turbo_method: :post, turbo_submits_with: "Regenerating..." } do %>
+              <i class="fas fa-sync-alt mr-1"></i> Regenerate
+            <% end %>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="line-items#addItem">
+              <i class="fas fa-plus mr-1"></i> Add Task
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="w-1/2">Description</th>
+                <th class="w-32">Hours</th>
+                <th class="w-32">Rate</th>
+                <th class="w-32">Subtotal</th>
+                <th class="w-16"></th>
+              </tr>
+            </thead>
+            <tbody data-line-items-target="container">
+              <% (@suggested_items.presence || []).each_with_index do |item, index| %>
+                <tr data-line-items-target="row">
+                  <td>
+                    <%= text_field_tag "items[#{index}][description]", item["description"],
+                        class: "input input-bordered input-sm w-full",
+                        placeholder: "Task description" %>
+                    <%= hidden_field_tag "items[#{index}][category]", item["category"] %>
+                  </td>
+                  <td>
+                    <%= number_field_tag "items[#{index}][hours]", item["hours"],
+                        class: "input input-bordered input-sm w-full",
+                        step: 0.5, min: 0,
+                        data: { action: "input->line-items#updateTotal", line_items_target: "hours" } %>
+                  </td>
+                  <td>
+                    <span class="text-base-content/60"><%= number_to_currency(@bid.hourly_rate || 60) %></span>
+                  </td>
+                  <td>
+                    <span data-line-items-target="subtotal"><%= number_to_currency((item["hours"] || 0) * (@bid.hourly_rate || 60)) %></span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-ghost btn-xs text-error" data-action="line-items#removeItem">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td>Total</td>
+                <td data-line-items-target="totalHours"><%= @suggested_items&.sum { |i| i["hours"].to_f } || 0 %> hrs</td>
+                <td><%= number_to_currency(@bid.hourly_rate || 60) %>/hr</td>
+                <td data-line-items-target="grandTotal"><%= number_to_currency((@suggested_items || []).sum { |i| (i["hours"] || 0).to_f * (@bid.hourly_rate || 60) }) %></td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Template for new rows (hidden) -->
+        <template data-line-items-target="template">
+          <tr data-line-items-target="row">
+            <td>
+              <input type="text" name="items[__INDEX__][description]" class="input input-bordered input-sm w-full" placeholder="Task description">
+            </td>
+            <td>
+              <input type="number" name="items[__INDEX__][hours]" class="input input-bordered input-sm w-full" step="0.5" min="0" value="0" data-action="input->line-items#updateTotal" data-line-items-target="hours">
+            </td>
+            <td>
+              <span class="text-base-content/60"><%= number_to_currency(@bid.hourly_rate || 60) %></span>
+            </td>
+            <td>
+              <span data-line-items-target="subtotal">$0.00</span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-ghost btn-xs text-error" data-action="line-items#removeItem">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </template>
+
+        <!-- Hidden field for hourly rate -->
+        <input type="hidden" data-line-items-target="rate" value="<%= @bid.hourly_rate || 60 %>">
+      </div>
+    </div>
+
+    <div class="flex justify-between gap-2">
+      <%= link_to back_admin_bid_wizard_path(@bid), class: "btn btn-ghost", data: { turbo_method: :post } do %>
+        <i class="fas fa-arrow-left mr-1"></i> Back
+      <% end %>
+      <%= f.submit "Continue to System Costs", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>

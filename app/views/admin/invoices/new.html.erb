@@ -1,0 +1,82 @@
+<h2 class="text-2xl font-bold mb-6">New Usage Invoice</h2>
+
+<div class="alert alert-info mb-6 max-w-2xl">
+  <i class="fas fa-info-circle"></i>
+  <span>To create a project invoice, accept a bid from the <%= link_to "Projects", admin_projects_path, class: "link link-primary font-medium" %> page.</span>
+</div>
+
+<% unless @invoice.client_id %>
+  <!-- Step 1: Select client and period -->
+  <div class="card bg-base-100 shadow max-w-xl mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base">Generate Usage Invoice</h3>
+      <%= form_with(url: new_admin_invoice_path, method: :get, class: "space-y-4") do |f| %>
+        <div class="form-control">
+          <label class="label">Client</label>
+          <%= f.select :client_id, options_from_collection_for_select(@clients, :id, :name), { prompt: "Select client..." }, class: "select select-bordered w-full" %>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label">Period Start</label>
+            <%= f.date_field :period_start, class: "input input-bordered w-full", value: Date.current.beginning_of_month %>
+          </div>
+          <div class="form-control">
+            <label class="label">Period End</label>
+            <%= f.date_field :period_end, class: "input input-bordered w-full", value: Date.current.end_of_month %>
+          </div>
+        </div>
+        <%= f.submit "Generate Preview", class: "btn btn-primary" %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <!-- Step 2: Review and create -->
+  <div class="card bg-base-100 shadow max-w-2xl">
+    <div class="card-body">
+      <h3 class="card-title text-base">Review Invoice for <%= @invoice.client&.name %></h3>
+      <p class="text-sm opacity-60"><%= @invoice.period_start %> to <%= @invoice.period_end %></p>
+
+      <% if @invoice.line_items.any? %>
+        <div class="overflow-x-auto my-4">
+          <table class="table table-sm">
+            <thead><tr><th>Description</th><th>Cost</th><th>Markup</th><th>Amount</th></tr></thead>
+            <tbody>
+              <% @invoice.line_items.each do |li| %>
+                <tr>
+                  <td><%= li.description %></td>
+                  <td><%= number_to_currency(li.internal_cost) %></td>
+                  <td><%= li.markup_percentage %>%</td>
+                  <td class="font-medium"><%= number_to_currency(li.amount) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold"><td>Total</td><td><%= number_to_currency(@invoice.subtotal) %></td><td></td><td><%= number_to_currency(@invoice.total) %></td></tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <%= form_with(model: [:admin, @invoice], class: "space-y-4") do |f| %>
+          <%= f.hidden_field :client_id %>
+          <%= f.hidden_field :period_start %>
+          <%= f.hidden_field :period_end %>
+          <%= f.hidden_field :subtotal %>
+          <%= f.hidden_field :total %>
+          <%= f.hidden_field :invoice_type, value: "cost_based" %>
+          <% @invoice.line_items.each_with_index do |li, i| %>
+            <%= f.fields_for :line_items, li, index: i do |lf| %>
+              <%= lf.hidden_field :app_id %>
+              <%= lf.hidden_field :description %>
+              <%= lf.hidden_field :internal_cost %>
+              <%= lf.hidden_field :markup_percentage %>
+              <%= lf.hidden_field :amount %>
+            <% end %>
+          <% end %>
+          <%= f.submit "Create Invoice", class: "btn btn-primary" %>
+        <% end %>
+      <% else %>
+        <p class="text-warning mt-4">No cost entries found for this client in the selected period.</p>
+      <% end %>
+    </div>
+  </div>
+<% end %>

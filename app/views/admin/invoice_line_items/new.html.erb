@@ -1,0 +1,34 @@
+<h2 class="text-2xl font-bold mb-6">Add Line Item to Invoice #<%= @invoice.id %></h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <%= form_with(model: [:admin, @invoice, @line_item], class: "space-y-4") do |f| %>
+      <div class="form-control">
+        <%= f.label :app_id, "App (optional)", class: "label" %>
+        <%= f.select :app_id, options_from_collection_for_select(@apps, :id, :name), { include_blank: "None" }, class: "select select-bordered w-full" %>
+      </div>
+      <div class="form-control">
+        <%= f.label :description, class: "label" %>
+        <%= f.text_field :description, class: "input input-bordered w-full" %>
+      </div>
+      <div class="grid grid-cols-3 gap-4" data-controller="line-item">
+        <div class="form-control">
+          <%= f.label :internal_cost, class: "label" %>
+          <%= f.number_field :internal_cost, class: "input input-bordered w-full", step: 0.01, data: { line_item_target: "cost", action: "input->line-item#calculate" } %>
+        </div>
+        <div class="form-control">
+          <%= f.label :markup_percentage, "Markup %", class: "label" %>
+          <%= f.number_field :markup_percentage, class: "input input-bordered w-full", step: 0.01, data: { line_item_target: "markup", action: "input->line-item#calculate" } %>
+        </div>
+        <div class="form-control">
+          <%= f.label :amount, class: "label" %>
+          <%= f.number_field :amount, class: "input input-bordered w-full", step: 0.01, data: { line_item_target: "amount" } %>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <%= f.submit "Add Line Item", class: "btn btn-primary" %>
+        <%= link_to "Cancel", admin_invoice_path(@invoice), class: "btn btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>

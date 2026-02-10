@@ -1,0 +1,86 @@
+<div class="max-w-3xl mx-auto">
+  <h2 class="text-2xl font-bold mb-2">Clarifying Questions</h2>
+  <p class="text-base-content/60 mb-6">Answer these questions to help generate a more accurate bid.</p>
+
+  <%= render "admin/bid_wizard/wizard_steps", current_step: "clarify" %>
+
+  <%= form_with(url: admin_bid_wizard_path(@bid), method: :patch, class: "space-y-6") do |f| %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <div class="flex justify-between items-center">
+          <h3 class="card-title text-lg">
+            <i class="fas fa-robot text-primary mr-2"></i>
+            SaaSless Agent Questions
+          </h3>
+          <%= link_to regenerate_questions_admin_bid_wizard_path(@bid),
+              class: "btn btn-ghost btn-sm",
+              data: { turbo_method: :post, turbo_submits_with: "Regenerating..." } do %>
+            <i class="fas fa-sync-alt mr-1"></i> Regenerate
+          <% end %>
+        </div>
+
+        <% if @questions.present? %>
+          <div class="space-y-6 mt-4">
+            <% @questions.each_with_index do |question, index| %>
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-medium"><%= question["question"] %></span>
+                </label>
+
+                <% case question["type"] %>
+                <% when "select" %>
+                  <%= select_tag "question_#{index}",
+                      options_for_select((question["options"] || []).map { |o| [o, o] }, @bid.wizard_answers[question["question"]]),
+                      include_blank: "— Select —",
+                      class: "select select-bordered w-full" %>
+
+                <% when "multiselect" %>
+                  <div class="flex flex-wrap gap-2">
+                    <% (question["options"] || []).each do |option| %>
+                      <label class="cursor-pointer label justify-start gap-2 p-0">
+                        <%= check_box_tag "question_#{index}[]", option,
+                            (@bid.wizard_answers[question["question"]] || []).include?(option),
+                            class: "checkbox checkbox-sm checkbox-primary" %>
+                        <span class="label-text"><%= option %></span>
+                      </label>
+                    <% end %>
+                  </div>
+
+                <% else %>
+                  <%= text_area_tag "question_#{index}",
+                      @bid.wizard_answers[question["question"]],
+                      class: "textarea textarea-bordered",
+                      rows: 2,
+                      placeholder: "Your answer..." %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>No questions were generated. Click "Regenerate" or go back to add more project details.</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Project Description Summary -->
+    <div class="collapse collapse-arrow bg-base-200 rounded-lg">
+      <input type="checkbox" />
+      <div class="collapse-title text-sm font-medium py-2 min-h-0">
+        <i class="fas fa-file-alt mr-1"></i> View Project Description
+      </div>
+      <div class="collapse-content text-sm">
+        <p class="whitespace-pre-wrap text-base-content/70"><%= @bid.project_description %></p>
+      </div>
+    </div>
+
+    <div class="flex justify-between gap-2">
+      <%= link_to back_admin_bid_wizard_path(@bid), class: "btn btn-ghost", data: { turbo_method: :post } do %>
+        <i class="fas fa-arrow-left mr-1"></i> Back
+      <% end %>
+      <%= f.submit "Generate Bid", class: "btn btn-primary", data: { turbo_submits_with: "Generating bid details..." } %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,69 @@
+<%= form_with(model: [:admin, recurring_invoice], class: "space-y-4") do |f| %>
+  <% if recurring_invoice.errors.any? %>
+    <div class="alert alert-error">
+      <ul>
+        <% recurring_invoice.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <%= f.label :client_id, "Client", class: "label" %>
+    <% if recurring_invoice.new_record? %>
+      <%= f.collection_select :client_id, available_clients, :id, :name, { prompt: "Select a client..." }, class: "select select-bordered w-full" %>
+    <% else %>
+      <input type="text" value="<%= recurring_invoice.client.name %>" class="input input-bordered w-full" disabled />
+      <%= f.hidden_field :client_id %>
+    <% end %>
+  </div>
+
+  <div class="form-control">
+    <label class="label"><span class="label-text font-medium">Collection Method</span></label>
+    <div class="flex gap-4">
+      <label class="label cursor-pointer gap-2">
+        <%= f.radio_button :collection_method, "send_invoice", class: "radio radio-primary" %>
+        <span class="label-text">
+          <i class="fas fa-envelope mr-1"></i> Send Invoice Email
+          <span class="block text-xs opacity-60">Customer receives invoice and pays manually</span>
+        </span>
+      </label>
+      <label class="label cursor-pointer gap-2">
+        <%= f.radio_button :collection_method, "charge_automatically", class: "radio radio-primary" %>
+        <span class="label-text">
+          <i class="fas fa-credit-card mr-1"></i> Auto-charge Card
+          <span class="block text-xs opacity-60">Customer's card is charged automatically</span>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="form-control">
+      <%= f.label :billing_day_of_month, "Billing Day of Month (1-28)", class: "label" %>
+      <%= f.number_field :billing_day_of_month, class: "input input-bordered w-full", min: 1, max: 28, value: recurring_invoice.billing_day_of_month || 1 %>
+      <label class="label">
+        <span class="label-text-alt">Capped at 28 to avoid month-end issues</span>
+      </label>
+    </div>
+
+    <div class="form-control">
+      <%= f.label :days_until_due, "Days Until Due", class: "label" %>
+      <%= f.number_field :days_until_due, class: "input input-bordered w-full", min: 1, value: recurring_invoice.days_until_due || 30 %>
+      <label class="label">
+        <span class="label-text-alt">Only applies to "Send Invoice" method</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :notes, class: "label" %>
+    <%= f.text_area :notes, class: "textarea textarea-bordered w-full", rows: 3, placeholder: "Optional notes about this recurring billing setup..." %>
+  </div>
+
+  <div class="flex gap-2">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_recurring_invoices_path, class: "btn btn-ghost" %>
+  </div>
+<% end %>

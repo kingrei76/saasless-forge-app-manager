@@ -1,0 +1,196 @@
+<div class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-2">Estimated Monthly System Costs</h2>
+  <p class="text-base-content/60 mb-6">Review infrastructure costs. SaaSless Agent has analyzed your project and the client's codebase to identify required systems.</p>
+
+  <%= render "admin/bid_wizard/wizard_steps", current_step: "costs" %>
+
+  <%= form_with(url: admin_bid_wizard_path(@bid), method: :patch, class: "space-y-6") do |f| %>
+    <div class="card bg-base-100 shadow" data-controller="system-cost" data-system-cost-url-value="<%= suggest_costs_admin_bid_wizard_path(@bid) %>">
+      <div class="card-body">
+        <div class="flex justify-between items-center">
+          <h3 class="card-title text-lg">
+            <i class="fas fa-server text-primary mr-2"></i>
+            System Costs
+          </h3>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" data-action="system-cost#suggestCosts">
+              <i class="fas fa-robot mr-1"></i> Re-analyze with SaaSless Agent
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" data-action="system-cost#addItem">
+              <i class="fas fa-plus mr-1"></i> Add Cost
+            </button>
+          </div>
+        </div>
+
+        <div class="alert alert-warning mt-4">
+          <i class="fas fa-exclamation-triangle"></i>
+          <div>
+            <p class="font-medium">These are Estimates</p>
+            <p class="text-sm opacity-80">Actual costs may vary based on the client's application usage and scale. We recommend reviewing after 1-2 months of operation.</p>
+          </div>
+        </div>
+
+        <div class="alert alert-info mt-2">
+          <i class="fas fa-info-circle"></i>
+          <div>
+            <p class="font-medium">Markup Applied</p>
+            <p class="text-sm opacity-80">Enter your actual cost. A <strong><%= Setting[:default_markup_percentage] || 30 %>% markup</strong> is applied for the customer price.</p>
+          </div>
+        </div>
+
+        <% if @suggested_costs.present? && @existing_costs.blank? %>
+          <div class="alert alert-success mt-4">
+            <i class="fas fa-robot"></i>
+            <div>
+              <p class="font-medium">SaaSless Agent Analysis Complete</p>
+              <p class="text-sm opacity-80">Based on the project requirements and codebase analysis, we've identified the following infrastructure needs. Review, edit, or remove items as needed.</p>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="table">
+            <thead>
+              <tr>
+                <th class="w-2/5">Description</th>
+                <th class="w-24">Category</th>
+                <th class="w-20">Type</th>
+                <th class="w-24">Your Cost</th>
+                <th class="w-28">Customer Price</th>
+                <th class="w-16"></th>
+              </tr>
+            </thead>
+            <tbody data-system-cost-target="container">
+              <% costs_to_show = @existing_costs.present? ? @existing_costs : (@suggested_costs || []) %>
+              <% costs_to_show.each_with_index do |cost, index| %>
+                <% is_model = cost.respond_to?(:description) %>
+                <% description = is_model ? cost.description : cost["description"] %>
+                <% unit_cost = is_model ? cost.unit_cost : (cost["monthly_cost"] || cost["unit_cost"]) %>
+                <% display_price = is_model ? cost.display_price : (cost["customer_price"] || unit_cost.to_f * 1.3) %>
+                <% is_recurring = is_model ? cost.is_recurring : true %>
+                <% is_new = is_model ? cost.is_new_system : (cost["is_new"] != false) %>
+                <% category = is_model ? cost.system_category : cost["category"] %>
+                <% note = is_model ? nil : cost["note"] %>
+                <tr data-system-cost-target="row" class="<%= is_new && !is_model ? 'bg-info/10' : '' %>">
+                  <td>
+                    <%= text_field_tag "costs[#{index}][description]", description,
+                        class: "input input-bordered input-sm w-full",
+                        placeholder: "Service name" %>
+                    <% if note.present? %>
+                      <p class="text-xs text-base-content/60 mt-1"><%= note %></p>
+                    <% end %>
+                  </td>
+                  <td>
+                    <%= select_tag "costs[#{index}][system_category]",
+                        options_for_select([
+                          ["Hosting", "Hosting"],
+                          ["Database", "Database"],
+                          ["AI/LLM Services", "AI/LLM Services"],
+                          ["Third-party APIs", "Third-party APIs"],
+                          ["Storage", "Storage"],
+                          ["Email/SMS", "Email/SMS"],
+                          ["Monitoring", "Monitoring"],
+                          ["Other", "Other"]
+                        ], category),
+                        class: "select select-bordered select-sm w-full" %>
+                  </td>
+                  <td>
+                    <label class="cursor-pointer flex items-center gap-1">
+                      <%= check_box_tag "costs[#{index}][is_new_system]", "1", is_new,
+                          class: "checkbox checkbox-xs checkbox-info" %>
+                      <span class="text-xs"><%= is_new ? "New" : "Existing" %></span>
+                    </label>
+                    <%= hidden_field_tag "costs[#{index}][is_recurring]", "1" %>
+                    <%= hidden_field_tag "costs[#{index}][billing_frequency]", "monthly" %>
+                  </td>
+                  <td>
+                    <label class="input input-bordered input-sm flex items-center gap-1">
+                      <span class="text-base-content/50">$</span>
+                      <%= number_field_tag "costs[#{index}][unit_cost]", unit_cost,
+                          class: "grow w-16",
+                          step: 0.01, min: 0,
+                          data: { action: "input->system-cost#updateMarkup", system_cost_target: "unitCost" } %>
+                    </label>
+                  </td>
+                  <td>
+                    <span class="font-medium text-success" data-system-cost-target="displayPrice">
+                      <%= number_to_currency(display_price) %>
+                    </span>
+                    <span class="text-xs text-base-content/50">/mo</span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn btn-ghost btn-xs text-error" data-action="system-cost#removeItem">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="3">Estimated Monthly Total</td>
+                <td data-system-cost-target="totalCost">$0.00</td>
+                <td data-system-cost-target="totalPrice">$0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Template for new rows (hidden) -->
+        <template data-system-cost-target="template">
+          <tr data-system-cost-target="row">
+            <td>
+              <input type="text" name="costs[__INDEX__][description]" class="input input-bordered input-sm w-full" placeholder="Service name">
+            </td>
+            <td>
+              <select name="costs[__INDEX__][system_category]" class="select select-bordered select-sm w-full">
+                <option value="Hosting">Hosting</option>
+                <option value="Database">Database</option>
+                <option value="AI/LLM Services">AI/LLM Services</option>
+                <option value="Third-party APIs">Third-party APIs</option>
+                <option value="Storage">Storage</option>
+                <option value="Email/SMS">Email/SMS</option>
+                <option value="Monitoring">Monitoring</option>
+                <option value="Other">Other</option>
+              </select>
+            </td>
+            <td>
+              <label class="cursor-pointer flex items-center gap-1">
+                <input type="checkbox" name="costs[__INDEX__][is_new_system]" value="1" checked class="checkbox checkbox-xs checkbox-info">
+                <span class="text-xs">New</span>
+              </label>
+              <input type="hidden" name="costs[__INDEX__][is_recurring]" value="1">
+              <input type="hidden" name="costs[__INDEX__][billing_frequency]" value="monthly">
+            </td>
+            <td>
+              <label class="input input-bordered input-sm flex items-center gap-1">
+                <span class="text-base-content/50">$</span>
+                <input type="number" name="costs[__INDEX__][unit_cost]" class="grow w-16" step="0.01" min="0" value="0" data-action="input->system-cost#updateMarkup" data-system-cost-target="unitCost">
+              </label>
+            </td>
+            <td>
+              <span class="font-medium text-success" data-system-cost-target="displayPrice">$0.00</span>
+              <span class="text-xs text-base-content/50">/mo</span>
+            </td>
+            <td>
+              <button type="button" class="btn btn-ghost btn-xs text-error" data-action="system-cost#removeItem">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </template>
+
+        <!-- Hidden field for markup percentage -->
+        <input type="hidden" data-system-cost-target="markupPercentage" value="<%= Setting[:default_markup_percentage] || 30 %>">
+      </div>
+    </div>
+
+    <div class="flex justify-between gap-2">
+      <%= link_to back_admin_bid_wizard_path(@bid), class: "btn btn-ghost", data: { turbo_method: :post } do %>
+        <i class="fas fa-arrow-left mr-1"></i> Back
+      <% end %>
+      <%= f.submit "Continue to Review", class: "btn btn-primary" %>
+    </div>
+  <% end %>
+</div>

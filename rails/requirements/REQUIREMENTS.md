@@ -1,1 +1,0 @@
-Placeholder for high level requirements of what you're trying to build with Leonardo.

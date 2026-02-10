@@ -1,0 +1,127 @@
+<h2 class="text-2xl font-bold mb-6">
+  Edit <%= @line_item.system_cost? ? "System Cost" : "Development Task" %>
+</h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <%= form_with(model: @line_item, url: admin_bid_line_item_path(@bid, @line_item), method: :patch, class: "space-y-4") do |f| %>
+      <div class="form-control">
+        <%= f.label :description, class: "label" %>
+        <%= f.text_field :description, class: "input input-bordered w-full", placeholder: @line_item.system_cost? ? "Service name" : "Task description" %>
+      </div>
+
+      <% if @line_item.system_cost? %>
+        <!-- System Cost Fields -->
+        <% markup_percentage = Setting[:default_markup_percentage]&.to_f || 30.0 %>
+        <div class="grid grid-cols-2 gap-4" data-controller="markup-preview" data-markup-preview-percentage-value="<%= markup_percentage %>">
+          <div class="form-control">
+            <%= f.label :unit_cost, "Your Cost (per month)", class: "label" %>
+            <label class="input input-bordered flex items-center gap-2">
+              <span class="text-base-content/50">$</span>
+              <%= f.number_field :unit_cost, class: "grow", step: 0.01, min: 0, data: { markup_preview_target: "cost", action: "input->markup-preview#calculate" } %>
+            </label>
+            <label class="label">
+              <span class="label-text-alt text-base-content/60">The actual cost you pay</span>
+            </label>
+          </div>
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text">Customer Price</span>
+            </label>
+            <div class="input input-bordered flex items-center bg-base-200">
+              <span class="text-success font-medium" data-markup-preview-target="price">
+                <%= number_to_currency(@line_item.display_price) %>/mo
+              </span>
+            </div>
+            <label class="label">
+              <span class="label-text-alt text-base-content/60">With <%= markup_percentage %>% markup</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-control">
+          <%= f.label :system_category, "Category", class: "label" %>
+          <%= f.select :system_category,
+              [
+                ["Hosting", "Hosting"],
+                ["Database", "Database"],
+                ["AI/LLM Services", "AI/LLM Services"],
+                ["Third-party APIs", "Third-party APIs"],
+                ["Storage", "Storage"],
+                ["Email/SMS", "Email/SMS"],
+                ["Monitoring", "Monitoring"],
+                ["Other", "Other"]
+              ],
+              { include_blank: "Select category..." },
+              class: "select select-bordered w-full" %>
+        </div>
+
+        <div class="form-control">
+          <label class="label cursor-pointer justify-start gap-3">
+            <%= f.check_box :is_new_system, class: "checkbox checkbox-info" %>
+            <span class="label-text">
+              <strong>New System</strong>
+              <span class="text-base-content/60 block text-sm">Check if this is a new system for this project (not already in use by client)</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="form-control">
+            <%= f.label :billing_frequency, class: "label" %>
+            <%= f.select :billing_frequency,
+                [["Monthly", "monthly"], ["Annual", "annual"]],
+                {},
+                class: "select select-bordered w-full" %>
+          </div>
+          <div class="form-control">
+            <label class="label cursor-pointer justify-start gap-3">
+              <%= f.check_box :is_recurring, class: "checkbox" %>
+              <span class="label-text">Recurring cost</span>
+            </label>
+          </div>
+        </div>
+
+      <% else %>
+        <!-- Development Task Fields -->
+        <div class="grid grid-cols-3 gap-4" data-controller="line-item">
+          <div class="form-control">
+            <%= f.label :hours, class: "label" %>
+            <%= f.number_field :hours, class: "input input-bordered w-full", step: 0.5, data: { line_item_target: "hours", action: "input->line-item#calculateEstimate" } %>
+          </div>
+          <div class="form-control">
+            <%= f.label :rate, "Rate ($/hr)", class: "label" %>
+            <%= f.number_field :rate, class: "input input-bordered w-full", step: 0.01, data: { line_item_target: "rate", action: "input->line-item#calculateEstimate" } %>
+          </div>
+          <div class="form-control">
+            <%= f.label :subtotal, class: "label" %>
+            <div class="input input-bordered flex items-center bg-base-200" data-line-item-target="subtotal">
+              <%= number_to_currency(@line_item.subtotal) %>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-control">
+          <%= f.label :work_category, "Work Category (Internal)", class: "label" %>
+          <%= f.select :work_category,
+              BidLineItem::WORK_CATEGORIES.map { |c| [BidLineItem::WORK_CATEGORY_LABELS[c], c] },
+              { include_blank: "Select category..." },
+              class: "select select-bordered w-full" %>
+          <label class="label">
+            <span class="label-text-alt text-base-content/60">Used for internal hour tracking. Not shown to customers.</span>
+          </label>
+        </div>
+      <% end %>
+
+      <div class="form-control">
+        <%= f.label :position, "Display Order", class: "label" %>
+        <%= f.number_field :position, class: "input input-bordered w-full", min: 1 %>
+      </div>
+
+      <div class="flex gap-2 pt-4">
+        <%= f.submit "Save Changes", class: "btn btn-primary" %>
+        <%= link_to "Cancel", admin_bid_path(@bid), class: "btn btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>

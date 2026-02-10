@@ -1,0 +1,49 @@
+<%= form_with(model: [:admin, client], class: "space-y-4") do |f| %>
+  <% if client.errors.any? %>
+    <div class="alert alert-error">
+      <ul>
+        <% client.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <%= f.label :name, class: "label" %>
+    <%= f.text_field :name, class: "input input-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :email, class: "label" %>
+    <%= f.email_field :email, class: "input input-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :company, class: "label" %>
+    <%= f.text_field :company, class: "input input-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :markup_percentage, "Markup % (leave blank for default)", class: "label" %>
+    <%= f.number_field :markup_percentage, class: "input input-bordered w-full", step: 0.01, min: 0 %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :collection_method, "Default Collection Method", class: "label" %>
+    <%= f.select :collection_method, [["Send Invoice Email", "send_invoice"], ["Auto-charge Card", "charge_automatically"]], {}, class: "select select-bordered w-full" %>
+    <label class="label">
+      <span class="label-text-alt">Used as default when creating recurring invoices for this client</span>
+    </label>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :stripe_customer_id, "Stripe Customer ID (optional)", class: "label" %>
+    <%= f.text_field :stripe_customer_id, class: "input input-bordered w-full", placeholder: "cus_..." %>
+  </div>
+
+  <div class="flex gap-2">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_clients_path, class: "btn btn-ghost" %>
+  </div>
+<% end %>

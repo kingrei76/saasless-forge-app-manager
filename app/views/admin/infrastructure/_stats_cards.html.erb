@@ -1,0 +1,34 @@
+<%# Combined Infrastructure Stats %>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body py-4">
+      <div class="text-sm opacity-60">Total Monthly Cost</div>
+      <div class="text-2xl font-bold text-primary"><%= number_to_currency(@total_monthly_cost) %></div>
+      <div class="text-xs opacity-50">Render + API costs</div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body py-4">
+      <div class="text-sm opacity-60">Render Services</div>
+      <div class="text-2xl font-bold"><%= @render_total_services %></div>
+      <div class="text-xs opacity-50"><%= number_to_currency(@render_monthly_cost) %>/mo</div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body py-4">
+      <div class="text-sm opacity-60">API Calls (This Month)</div>
+      <div class="text-2xl font-bold"><%= number_with_delimiter(ApiUsageLog.grok.this_month.count) %></div>
+      <div class="text-xs opacity-50"><%= number_to_currency(@api_this_month_cost) %></div>
+    </div>
+  </div>
+
+  <div class="card bg-base-100 shadow">
+    <div class="card-body py-4">
+      <div class="text-sm opacity-60">Tokens (This Month)</div>
+      <div class="text-2xl font-bold"><%= format_tokens(ApiUsageLog.grok.this_month.sum("COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)")) %></div>
+      <div class="text-xs opacity-50">Input + Output</div>
+    </div>
+  </div>
+</div>

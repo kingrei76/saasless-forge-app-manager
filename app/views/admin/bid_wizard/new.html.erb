@@ -1,0 +1,159 @@
+<div class="max-w-3xl mx-auto">
+  <h2 class="text-2xl font-bold mb-2">Create Bid with AI</h2>
+  <p class="text-base-content/60 mb-6">Describe your project and let Grok help you create an accurate bid.</p>
+
+  <%= render "admin/bid_wizard/wizard_steps", current_step: "describe" %>
+
+  <%= form_with(url: admin_bid_wizards_path, method: :post, class: "space-y-6", data: { controller: "bid-wizard", bid_wizard_apps_value: @apps.to_json(only: [:id, :name, :language], methods: [:client_ids]) }) do |f| %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">
+          <i class="fas fa-pencil-alt text-primary mr-2"></i>
+          Project Description
+        </h3>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">Describe the project in detail</span>
+          </label>
+          <%= text_area_tag :project_description, "",
+              class: "textarea textarea-bordered h-40",
+              placeholder: "Describe what you're building, key features, technical requirements, and any specific constraints or preferences...",
+              required: true %>
+          <label class="label">
+            <span class="label-text-alt">The more detail you provide, the more accurate the bid will be.</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Client</span>
+            </label>
+            <input type="text"
+                   class="input input-bordered w-full"
+                   placeholder="Search clients..."
+                   data-bid-wizard-target="clientSearch"
+                   data-action="input->bid-wizard#filterClients focus->bid-wizard#showClientDropdown">
+            <select name="client_id"
+                    class="select select-bordered w-full mt-2"
+                    data-bid-wizard-target="clientSelect"
+                    data-action="change->bid-wizard#filterAppsByClient">
+              <option value="">-- Select Client --</option>
+              <% @clients.each do |client| %>
+                <option value="<%= client.id %>"><%= client.name %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Project Scope</span>
+            </label>
+            <%= select_tag :project_scope,
+                options_for_select([
+                  ["Quick Fix / Tweak (1-4 hrs)", "quick_fix"],
+                  ["Small Feature (4-16 hrs)", "small_feature"],
+                  ["Medium Feature (16-40 hrs)", "medium_feature"],
+                  ["Large Feature / Module (40-80 hrs)", "large_feature"],
+                  ["Full Application (80+ hrs)", "full_app"]
+                ], "small_feature"),
+                class: "select select-bordered w-full" %>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Bid Title</span>
+            </label>
+            <%= text_field_tag :title, @bid.title, class: "input input-bordered w-full", placeholder: "Project name or title (auto-generated from description)" %>
+            <label class="label">
+              <span class="label-text-alt">Leave blank to auto-generate from description</span>
+            </label>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Hourly Rate</span>
+            </label>
+            <label class="input input-bordered flex items-center gap-2">
+              <span class="text-base-content/50">$</span>
+              <%= number_field_tag :hourly_rate, @bid.hourly_rate, class: "grow", step: 0.01, min: 0 %>
+              <span class="text-base-content/50">/hr</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">
+          <i class="fas fa-cube text-primary mr-2"></i>
+          Apps
+          <span class="badge badge-error badge-sm ml-2">Required</span>
+        </h3>
+        <p class="text-sm text-base-content/60 mb-2">Select an existing app or add a new one for this project.</p>
+        <div class="alert alert-info py-2 mb-4">
+          <i class="fas fa-code-branch"></i>
+          <span class="text-sm">Selecting existing apps allows AI to analyze their GitHub repos for more accurate scoping.</span>
+        </div>
+
+        <!-- Validation message -->
+        <div class="alert alert-error hidden" data-bid-wizard-target="appValidation">
+          <i class="fas fa-exclamation-circle"></i>
+          <span>Please select at least one existing app or add a new app name.</span>
+        </div>
+
+        <% if @apps.present? %>
+          <div class="form-control mb-4">
+            <label class="label">
+              <span class="label-text font-medium">Existing Apps</span>
+            </label>
+            <input type="text"
+                   class="input input-bordered input-sm w-full mb-2"
+                   placeholder="Search apps..."
+                   data-bid-wizard-target="appSearch"
+                   data-action="input->bid-wizard#filterApps">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto" data-bid-wizard-target="appList">
+              <% @apps.each do |app| %>
+                <label class="flex items-center gap-2 p-2 rounded border border-base-300 hover:bg-base-200 cursor-pointer app-item"
+                       data-app-id="<%= app.id %>"
+                       data-app-name="<%= app.name.downcase %>"
+                       data-client-ids="<%= app.app_assignments.pluck(:client_id).join(',') %>">
+                  <%= check_box_tag "app_ids[]", app.id, false, class: "checkbox checkbox-sm checkbox-primary", data: { action: "change->bid-wizard#validateApps" } %>
+                  <span class="text-sm"><%= app.name %></span>
+                  <% if app.language.present? %>
+                    <span class="badge badge-ghost badge-xs"><%= app.language %></span>
+                  <% end %>
+                </label>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <div class="divider">OR</div>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text font-medium">New Apps</span>
+            <span class="label-text-alt">Add apps that will be created for this project</span>
+          </label>
+          <div id="new-apps-container" class="space-y-2" data-bid-wizard-target="newAppsContainer">
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm mt-2 w-fit" data-action="click->bid-wizard#addNewApp">
+            <i class="fas fa-plus mr-1"></i> Add New App
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-end gap-2">
+      <%= link_to admin_bids_path, class: "btn btn-ghost" do %>
+        <i class="fas fa-times mr-1"></i> Cancel
+      <% end %>
+      <%= f.submit "Continue", class: "btn btn-primary", data: { action: "click->bid-wizard#validateAndSubmit", turbo_submits_with: "Generating questions..." } %>
+    </div>
+  <% end %>
+</div>

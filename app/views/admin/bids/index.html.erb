@@ -1,0 +1,53 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Bids</h2>
+  <%= link_to new_admin_bid_wizard_path, class: "btn btn-primary btn-sm" do %>
+    <i class="fas fa-robot mr-1"></i> New Bid
+  <% end %>
+</div>
+
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Client</th>
+        <th>Hourly Rate</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @bids.each do |bid| %>
+        <tr>
+          <td class="font-medium">
+            <%= link_to bid.title, admin_bid_path(bid), class: "link link-primary" %>
+            <% if bid.ai_generated? %>
+              <span class="badge badge-secondary badge-xs ml-1" title="Created with SaaSless Agent">SA</span>
+            <% end %>
+          </td>
+          <td><%= bid.client&.name || "—" %></td>
+          <td><%= number_to_currency(bid.hourly_rate) %>/hr</td>
+          <td class="font-medium"><%= number_to_currency(bid.total) %></td>
+          <td>
+            <% badge_class = { "draft" => "badge-ghost", "sent" => "badge-info", "accepted" => "badge-success", "rejected" => "badge-error" }[bid.status] %>
+            <span class="badge <%= badge_class %> badge-sm"><%= bid.status.capitalize %></span>
+          </td>
+          <td class="text-sm"><%= bid.created_at.strftime("%b %d, %Y") %></td>
+          <td class="flex gap-1">
+            <%= link_to admin_bid_path(bid), class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-eye"></i>
+            <% end %>
+            <%= link_to preview_pdf_admin_bid_path(bid), class: "btn btn-ghost btn-xs", target: "_blank" do %>
+              <i class="fas fa-file-pdf"></i>
+            <% end %>
+            <%= button_to admin_bid_path(bid), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Are you sure you want to permanently delete this bid? This action cannot be undone." } do %>
+              <i class="fas fa-trash"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

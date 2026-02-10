@@ -1,0 +1,108 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Time Entries</h2>
+    <p class="text-sm opacity-60">
+      <%= link_to @project.title, admin_project_path(@project), class: "link link-primary" %>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <%= link_to new_admin_project_time_entry_path(@project), class: "btn btn-primary btn-sm" do %>
+      <i class="fas fa-plus mr-1"></i> Log Time
+    <% end %>
+    <%= link_to admin_project_path(@project), class: "btn btn-ghost btn-sm" do %>
+      <i class="fas fa-arrow-left mr-1"></i> Back to Project
+    <% end %>
+  </div>
+</div>
+
+<!-- Hours Summary -->
+<div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Total Hours</div>
+    <div class="stat-value text-lg"><%= @project.actual_hours %></div>
+  </div>
+  <% @hours_by_category.each do |category, hours| %>
+    <div class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-title text-xs"><%= TimeEntry::WORK_CATEGORY_LABELS[category] %></div>
+      <div class="stat-value text-lg"><%= hours %></div>
+    </div>
+  <% end %>
+</div>
+
+<!-- Comparison with Estimate -->
+<% if @project.estimated_hours.present? && @project.estimated_hours > 0 %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body py-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-sm opacity-60">Estimated:</span>
+          <span class="font-medium ml-1"><%= @project.estimated_hours %> hrs</span>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Actual:</span>
+          <span class="font-medium ml-1"><%= @project.actual_hours %> hrs</span>
+        </div>
+        <div>
+          <span class="text-sm opacity-60">Variance:</span>
+          <% variance = @project.hours_variance_percentage %>
+          <% if variance && variance > 0 %>
+            <span class="font-medium ml-1 text-error">+<%= variance %>%</span>
+          <% elsif variance && variance < 0 %>
+            <span class="font-medium ml-1 text-success"><%= variance %>%</span>
+          <% else %>
+            <span class="font-medium ml-1">On Target</span>
+          <% end %>
+        </div>
+        <div class="flex-1 ml-6">
+          <progress class="progress progress-primary w-full" value="<%= @project.actual_hours %>" max="<%= @project.estimated_hours %>"></progress>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- Time Entries Table -->
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <% if @time_entries.any? %>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Hours</th>
+              <th>Category</th>
+              <th>Notes</th>
+              <th>Logged By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @time_entries.each do |entry| %>
+              <tr>
+                <td class="font-medium"><%= entry.entry_date.strftime("%b %d, %Y") %></td>
+                <td><%= entry.hours %> hrs</td>
+                <td><span class="badge badge-outline badge-sm"><%= entry.work_category_label %></span></td>
+                <td class="max-w-xs truncate text-sm opacity-80"><%= entry.notes %></td>
+                <td class="text-sm"><%= entry.user.name || entry.user.email %></td>
+                <td class="flex gap-1">
+                  <%= link_to edit_admin_project_time_entry_path(@project, entry), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-edit"></i>
+                  <% end %>
+                  <%= button_to admin_project_time_entry_path(@project, entry),
+                      method: :delete,
+                      class: "btn btn-ghost btn-xs text-error",
+                      data: { turbo_confirm: "Delete this time entry?" } do %>
+                    <i class="fas fa-trash"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-center py-8 opacity-60">No time entries logged yet.</p>
+    <% end %>
+  </div>
+</div>

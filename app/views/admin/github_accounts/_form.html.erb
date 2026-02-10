@@ -1,0 +1,158 @@
+<%= form_with(model: [:admin, github_account], class: "space-y-5") do |f| %>
+  <% if github_account.errors.any? %>
+    <div class="alert alert-error shadow-sm">
+      <div>
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+          <h3 class="font-bold">Please fix the following:</h3>
+          <ul class="list-disc list-inside text-sm mt-1">
+            <% github_account.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Step 1: Account Name -->
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">
+        <span class="badge badge-sm badge-primary mr-1">1</span>
+        Account Name
+      </span>
+      <span class="tooltip tooltip-left" data-tip="Go to github.com and click your profile icon in the top-right. Your account name is shown under your avatar (e.g. 'my-org' or 'username'). For organizations, go to github.com/settings/organizations.">
+        <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+      </span>
+    </label>
+    <%= f.text_field :account_name,
+      class: "input input-bordered w-full #{github_account.errors[:account_name].any? ? 'input-error' : ''}",
+      placeholder: "e.g. my-org or username" %>
+    <label class="label">
+      <span class="label-text-alt text-base-content/50">
+        <i class="fab fa-github mr-1"></i>
+        Find this at <a href="https://github.com/settings/profile" target="_blank" class="link link-primary">github.com</a> &mdash; it's your username or organization name in the URL.
+      </span>
+    </label>
+  </div>
+
+  <!-- Step 2: Personal Access Token -->
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">
+        <span class="badge badge-sm badge-primary mr-1">2</span>
+        Personal Access Token
+      </span>
+      <span class="tooltip tooltip-left" data-tip="Go to GitHub > Settings > Developer settings > Personal access tokens > Tokens (classic). Click 'Generate new token' and enable the 'repo' and 'read:user' scopes. Copy the token (starts with 'ghp_').">
+        <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+      </span>
+    </label>
+    <%= f.password_field :access_token,
+      class: "input input-bordered w-full #{github_account.errors[:access_token].any? ? 'input-error' : ''}",
+      placeholder: "ghp_...",
+      value: github_account.access_token.present? ? "" : "" %>
+    <label class="label pb-0">
+      <span class="label-text-alt text-base-content/50">
+        <i class="fas fa-lock mr-1"></i>
+        Stored encrypted. Never shared or logged.
+      </span>
+    </label>
+
+    <!-- Collapsible instructions -->
+    <div class="collapse collapse-arrow bg-base-200 rounded-lg mt-2">
+      <input type="checkbox" />
+      <div class="collapse-title text-sm font-medium py-2 min-h-0">
+        <i class="fas fa-list-ol mr-1"></i> How to generate a token
+      </div>
+      <div class="collapse-content text-sm">
+        <ol class="list-decimal list-inside space-y-1 text-base-content/70">
+          <li>Go to <a href="https://github.com/settings/tokens" target="_blank" class="link link-primary">GitHub Token Settings</a></li>
+          <li>Click <strong>Generate new token</strong> &rarr; <strong>Generate new token (classic)</strong></li>
+          <li>Give it a descriptive name (e.g. "SaaSless Forge")</li>
+          <li>
+            Enable these scopes:
+            <ul class="list-disc list-inside ml-4 mt-1">
+              <li><code class="badge badge-sm badge-ghost">repo</code> &mdash; access private repos &amp; commits</li>
+              <li><code class="badge badge-sm badge-ghost">read:user</code> &mdash; verify connection</li>
+            </ul>
+          </li>
+          <li>Click <strong>Generate token</strong> and copy it immediately (you won't see it again)</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 3: Label -->
+  <div class="form-control">
+    <label class="label">
+      <span class="label-text font-medium">
+        <span class="badge badge-sm badge-outline mr-1">3</span>
+        Label
+        <span class="text-base-content/40 font-normal ml-1">(optional)</span>
+      </span>
+    </label>
+    <%= f.text_field :label, class: "input input-bordered w-full", placeholder: "e.g. Work, Personal, Client Org" %>
+    <label class="label">
+      <span class="label-text-alt text-base-content/50">A friendly name to help you identify this account.</span>
+    </label>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Render Integration (Optional) -->
+  <div>
+    <h3 class="text-lg font-bold mb-4">
+      <i class="fas fa-cloud text-blue-500 mr-1"></i> Render Integration
+      <span class="text-base-content/40 font-normal text-sm ml-1">(optional)</span>
+    </h3>
+
+    <div class="collapse collapse-arrow bg-base-200 rounded-lg mb-4">
+      <input type="checkbox" />
+      <div class="collapse-title text-sm font-medium py-2 min-h-0">
+        <i class="fas fa-list-ol mr-1"></i> How to get your Render API key
+      </div>
+      <div class="collapse-content text-sm">
+        <ol class="list-decimal list-inside space-y-2 text-base-content/70">
+          <li>Go to <a href="https://dashboard.render.com" target="_blank" class="link link-primary">dashboard.render.com</a> and sign in</li>
+          <li>Click your profile picture &rarr; <strong>Account Settings</strong></li>
+          <li>Scroll down to <strong>API Keys</strong></li>
+          <li>Click <strong>Create API Key</strong>, give it a name, and copy the key</li>
+          <li>Paste it below</li>
+        </ol>
+        <div class="alert alert-info mt-3 text-xs">
+          <i class="fas fa-info-circle"></i>
+          <span>The API key grants read access to your Render services. It's used to pull service data and calculate hosting costs automatically.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text font-medium">Render API Key</span>
+        <span class="tooltip tooltip-left" data-tip="Found at dashboard.render.com → Account Settings → API Keys. Starts with 'rnd_'.">
+          <i class="fas fa-question-circle text-base-content/40 cursor-help"></i>
+        </span>
+      </label>
+      <%= f.password_field :render_api_key,
+        class: "input input-bordered w-full",
+        placeholder: "rnd_...",
+        value: github_account.render_api_key.present? ? "••••••••••••••••" : "" %>
+      <label class="label">
+        <span class="label-text-alt text-base-content/50">
+          <i class="fas fa-lock mr-1"></i>
+          <% if github_account.render_api_key.present? %>
+            Current key: <code class="text-xs"><%= github_account.render_api_key[0..7] %>...</code> — select and replace to change
+          <% else %>
+            Not configured
+          <% end %>
+        </span>
+      </label>
+    </div>
+  </div>
+
+  <div class="flex gap-2 pt-2">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_github_accounts_path, class: "btn btn-ghost" %>
+  </div>
+<% end %>

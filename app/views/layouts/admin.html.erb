@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html data-theme="corporate">
+<head>
+  <title>SaaSless Forge App Manager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+  <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_importmap_tags %>
+</head>
+<body class="bg-base-200 min-h-screen">
+  <div class="drawer lg:drawer-open">
+    <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
+
+    <!-- Page content -->
+    <div class="drawer-content flex flex-col">
+      <!-- Top bar -->
+      <div class="navbar bg-base-100 shadow-sm lg:hidden">
+        <div class="flex-none">
+          <label for="admin-drawer" class="btn btn-square btn-ghost">
+            <i class="fas fa-bars"></i>
+          </label>
+        </div>
+        <div class="flex-1">
+          <span class="text-xl font-bold">SaaSless Forge</span>
+        </div>
+      </div>
+
+      <!-- Flash messages -->
+      <% if notice %>
+        <div class="alert alert-success m-4">
+          <i class="fas fa-check-circle"></i>
+          <span><%= notice %></span>
+        </div>
+      <% end %>
+      <% if alert %>
+        <div class="alert alert-error m-4">
+          <i class="fas fa-exclamation-circle"></i>
+          <span><%= alert %></span>
+        </div>
+      <% end %>
+
+      <!-- Main content -->
+      <main class="flex-1 p-6">
+        <%= yield %>
+      </main>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="drawer-side">
+      <label for="admin-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+      <aside class="bg-base-100 w-64 min-h-full border-r border-base-300">
+        <div class="p-4 border-b border-base-300">
+          <h1 class="text-xl font-bold flex items-center gap-2">
+            <i class="fas fa-fire text-primary"></i>
+            SaaSless Forge
+          </h1>
+          <p class="text-xs opacity-60 mt-1">App Manager</p>
+        </div>
+        <ul class="menu p-4 gap-1">
+          <li>
+            <%= link_to admin_root_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-tachometer-alt w-5 text-center"></i> Dashboard
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_apps_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-rocket w-5 text-center"></i> Apps
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_github_accounts_path, class: "flex items-center gap-3" do %>
+              <i class="fab fa-github w-5 text-center"></i> GitHub Accounts
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_clients_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-users w-5 text-center"></i> Clients
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_cost_entries_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-dollar-sign w-5 text-center"></i> Cost Entries
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_costs_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-chart-bar w-5 text-center"></i> Cost Charts
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_infrastructure_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-server w-5 text-center"></i> Infrastructure
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_projects_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-folder-open w-5 text-center"></i> Projects
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_bids_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-gavel w-5 text-center"></i> Bids
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_invoices_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-file-invoice-dollar w-5 text-center"></i> Invoices
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_recurring_invoices_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-sync-alt w-5 text-center"></i> Recurring Billing
+            <% end %>
+          </li>
+
+          <% if current_user&.admin? %>
+            <li class="menu-title mt-4"><span>Admin</span></li>
+            <li>
+              <%= link_to admin_settings_path, class: "flex items-center gap-3" do %>
+                <i class="fas fa-cog w-5 text-center"></i> Settings
+              <% end %>
+            </li>
+            <li>
+              <%= link_to admin_audit_logs_path, class: "flex items-center gap-3" do %>
+                <i class="fas fa-history w-5 text-center"></i> Audit Log
+              <% end %>
+            </li>
+            <li>
+              <%= link_to admin_users_path, class: "flex items-center gap-3" do %>
+                <i class="fas fa-user-shield w-5 text-center"></i> Users
+              <% end %>
+            </li>
+          <% end %>
+        </ul>
+
+        <div class="mt-auto p-4 border-t border-base-300">
+          <div class="flex items-center gap-3">
+            <div class="avatar placeholder">
+              <div class="bg-neutral text-neutral-content rounded-full w-8">
+                <span class="text-xs"><%= current_user&.name&.first&.upcase || "?" %></span>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium truncate"><%= current_user&.name || current_user&.email %></p>
+              <p class="text-xs opacity-60"><%= current_user&.role&.capitalize %></p>
+            </div>
+            <%= link_to destroy_user_session_path, method: :delete, class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-sign-out-alt"></i>
+            <% end %>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

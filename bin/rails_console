@@ -1,1 +1,1 @@
-docker compose exec -it llamapress bundle exec rails c
+docker compose exec -it web bundle exec rails c

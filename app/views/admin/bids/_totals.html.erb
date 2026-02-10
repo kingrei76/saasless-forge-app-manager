@@ -1,0 +1,21 @@
+<div id="bid_totals">
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-title">Status</div>
+      <% badge_class = { "draft" => "badge-ghost", "sent" => "badge-info", "accepted" => "badge-success", "rejected" => "badge-error" }[bid.status] %>
+      <div class="stat-value text-lg"><span class="badge <%= badge_class %>"><%= bid.status.capitalize %></span></div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-title">Hourly Rate</div>
+      <div class="stat-value text-lg"><%= number_to_currency(bid.hourly_rate) %></div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-title">Total Hours</div>
+      <div class="stat-value text-lg"><%= bid.development_hours_total %></div>
+    </div>
+    <div class="stat bg-base-100 rounded-box shadow">
+      <div class="stat-title">Total</div>
+      <div class="stat-value text-lg text-primary"><%= number_to_currency(bid.total) %></div>
+    </div>
+  </div>
+</div>

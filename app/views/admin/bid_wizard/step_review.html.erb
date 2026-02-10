@@ -1,0 +1,178 @@
+<div class="max-w-4xl mx-auto">
+  <h2 class="text-2xl font-bold mb-2">Review Your Bid</h2>
+  <p class="text-base-content/60 mb-6">Review all details before finalizing your bid.</p>
+
+  <%= render "admin/bid_wizard/wizard_steps", current_step: "review" %>
+
+  <%= form_with(url: admin_bid_wizard_path(@bid), method: :patch, class: "space-y-6") do |f| %>
+    <!-- Bid Summary -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">
+          <i class="fas fa-info-circle text-primary mr-2"></i>
+          Bid Details
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Bid Title</span>
+            </label>
+            <%= text_field_tag :title, @bid.title, class: "input input-bordered w-full" %>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Client</span>
+            </label>
+            <p class="input input-bordered flex items-center text-base-content/70">
+              <%= @bid.client&.name || "No client selected" %>
+            </p>
+          </div>
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Requirements Summary</span>
+          </label>
+          <%= text_area_tag :requirements_summary, @bid.requirements_summary,
+              class: "textarea textarea-bordered h-32" %>
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label">
+            <span class="label-text font-medium">Notes (Internal)</span>
+          </label>
+          <%= text_area_tag :notes, @bid.notes,
+              class: "textarea textarea-bordered",
+              rows: 2,
+              placeholder: "Any internal notes..." %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Development Hours -->
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">
+          <i class="fas fa-clock text-primary mr-2"></i>
+          Development Hours
+        </h3>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Description</th>
+                <th class="text-right">Hours</th>
+                <th class="text-right">Rate</th>
+                <th class="text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @development_items.each do |item| %>
+                <tr>
+                  <td><%= item.position %></td>
+                  <td><%= item.description %></td>
+                  <td class="text-right"><%= item.hours %></td>
+                  <td class="text-right"><%= number_to_currency(item.rate) %></td>
+                  <td class="text-right font-medium"><%= number_to_currency(item.subtotal) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="2">Development Subtotal</td>
+                <td class="text-right"><%= @development_items.sum(:hours) %> hrs</td>
+                <td></td>
+                <td class="text-right"><%= number_to_currency(@bid.development_subtotal) %></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- System Costs -->
+    <% if @system_costs.any? %>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">
+            <i class="fas fa-server text-primary mr-2"></i>
+            Monthly System Costs
+          </h3>
+
+          <div class="overflow-x-auto mt-4">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Description</th>
+                  <th class="text-right">Your Cost</th>
+                  <th class="text-right">Customer Price</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @system_costs.each do |cost| %>
+                  <tr>
+                    <td><%= cost.position %></td>
+                    <td>
+                      <%= cost.description %>
+                      <% if cost.recurring? %>
+                        <span class="badge badge-sm badge-ghost">Recurring</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right text-base-content/60"><%= number_to_currency(cost.unit_cost) %></td>
+                    <td class="text-right font-medium"><%= number_to_currency(cost.display_price) %>/mo</td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <tfoot>
+                <tr class="font-bold">
+                  <td colspan="2">Monthly Total</td>
+                  <td class="text-right text-base-content/60"><%= number_to_currency(@system_costs.sum(:unit_cost)) %></td>
+                  <td class="text-right"><%= number_to_currency(@system_costs.sum(:display_price)) %>/mo</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="alert alert-info mt-4">
+            <i class="fas fa-eye-slash"></i>
+            <span>Your internal costs are hidden from the customer. Only the "Customer Price" column appears on the PDF.</span>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Grand Total -->
+    <div class="card bg-primary text-primary-content shadow">
+      <div class="card-body">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-lg font-bold">Bid Total</h3>
+            <p class="text-sm opacity-80">One-time development + first month system costs</p>
+          </div>
+          <div class="text-right">
+            <div class="text-3xl font-bold">
+              <%= number_to_currency(@bid.development_subtotal + @system_costs.sum(&:display_price).to_f) %>
+            </div>
+            <% if @system_costs.any? %>
+              <div class="text-sm opacity-80">
+                + <%= number_to_currency(@system_costs.sum(&:display_price)) %>/mo ongoing
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex justify-between gap-2">
+      <%= link_to back_admin_bid_wizard_path(@bid), class: "btn btn-ghost", data: { turbo_method: :post } do %>
+        <i class="fas fa-arrow-left mr-1"></i> Back
+      <% end %>
+      <%= f.submit "Create Bid", class: "btn btn-success btn-lg", data: { turbo_submits_with: "Creating bid..." } %>
+    </div>
+  <% end %>
+</div>

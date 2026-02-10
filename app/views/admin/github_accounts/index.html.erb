@@ -1,0 +1,43 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">GitHub Accounts</h2>
+  <%= link_to new_admin_github_account_path, class: "btn btn-primary btn-sm" do %>
+    <i class="fas fa-plus mr-1"></i> Add Account
+  <% end %>
+</div>
+
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Account</th>
+        <th>Label</th>
+        <th>Owner</th>
+        <th>Apps</th>
+        <th>Last Synced</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @github_accounts.each do |account| %>
+        <tr>
+          <td class="font-medium"><%= account.account_name %></td>
+          <td><%= account.label %></td>
+          <td><%= account.user.email %></td>
+          <td><%= account.apps.count %></td>
+          <td><%= account.last_synced_at ? time_ago_in_words(account.last_synced_at) + " ago" : "Never" %></td>
+          <td class="flex gap-1">
+            <%= link_to admin_github_account_path(account), class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-eye"></i>
+            <% end %>
+            <%= link_to edit_admin_github_account_path(account), class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-edit"></i>
+            <% end %>
+            <%= button_to sync_admin_github_account_path(account), method: :post, class: "btn btn-ghost btn-xs" do %>
+              <i class="fas fa-sync"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>

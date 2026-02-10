@@ -1,0 +1,4 @@
+<%= turbo_stream.remove "line_item_#{@line_item.id}" %>
+<%= turbo_stream.replace "bid_totals" do %>
+  <%= render "admin/bids/totals", bid: @bid %>
+<% end %>

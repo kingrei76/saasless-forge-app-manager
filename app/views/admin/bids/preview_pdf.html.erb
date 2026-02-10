@@ -1,0 +1,143 @@
+<% development_items = @line_items.select(&:development?) %>
+<% system_costs = @line_items.select(&:system_cost?) %>
+
+<div class="max-w-3xl mx-auto">
+  <div class="flex justify-between items-start mb-8 border-b pb-4">
+    <div>
+      <h1 class="text-3xl font-bold">Project Proposal</h1>
+      <p class="text-gray-500 mt-1"><%= @bid.title %></p>
+    </div>
+    <div class="text-right text-sm text-gray-500">
+      <p>Date: <%= @bid.created_at.strftime("%B %d, %Y") %></p>
+      <p>Valid for 30 days</p>
+    </div>
+  </div>
+
+  <% if @bid.client %>
+    <div class="mb-6">
+      <h3 class="font-bold text-sm text-gray-500 uppercase mb-1">Prepared For</h3>
+      <p class="font-medium"><%= @bid.client.name %></p>
+      <% if @bid.client.company.present? %>
+        <p class="text-sm text-gray-500"><%= @bid.client.company %></p>
+      <% end %>
+      <% if @bid.client.email.present? %>
+        <p class="text-sm text-gray-500"><%= @bid.client.email %></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- Project Overview (Problem & Solution) -->
+  <% if @bid.requirements_summary.present? %>
+    <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+      <h3 class="font-bold text-sm text-gray-500 uppercase mb-2">Project Overview</h3>
+      <p class="text-sm whitespace-pre-wrap"><%= @bid.requirements_summary %></p>
+    </div>
+  <% end %>
+
+  <!-- What You're Getting (Features) -->
+  <div class="mb-6">
+    <h3 class="font-bold text-sm text-gray-500 uppercase mb-3">What You're Getting</h3>
+    <div class="bg-white border rounded-lg p-4">
+      <ul class="space-y-3">
+        <% if @bid.features_list.present? %>
+          <% @bid.features_list.each do |feature| %>
+            <li class="flex items-start gap-3">
+              <span class="text-green-500 mt-0.5">&#10003;</span>
+              <span><%= feature %></span>
+            </li>
+          <% end %>
+        <% else %>
+          <!-- Fallback: Show development items as features -->
+          <% development_items.each do |item| %>
+            <li class="flex items-start gap-3">
+              <span class="text-green-500 mt-0.5">&#10003;</span>
+              <span><%= item.description.gsub(/^Phase \d+:\s*/, '').gsub(/^\w+ & \w+ - /, '') %></span>
+            </li>
+          <% end %>
+        <% end %>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Development Investment -->
+  <div class="mb-6">
+    <h3 class="font-bold text-sm text-gray-500 uppercase mb-2">Development Investment</h3>
+    <div class="bg-white border rounded-lg p-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <p class="font-medium">Complete Project Development</p>
+          <p class="text-sm text-gray-500">All features listed above, fully implemented and tested</p>
+        </div>
+        <div class="text-right">
+          <p class="text-2xl font-bold"><%= number_to_currency(@bid.development_subtotal) %></p>
+          <p class="text-xs text-gray-500">one-time</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Monthly Infrastructure Costs (Estimates) -->
+  <% if system_costs.any? %>
+    <div class="mb-6">
+      <h3 class="font-bold text-sm text-gray-500 uppercase mb-2">Estimated Monthly Infrastructure</h3>
+      <p class="text-xs text-gray-500 mb-2">These are estimates based on typical usage. Actual costs may vary.</p>
+      <table class="w-full border-collapse bg-white border rounded-lg overflow-hidden">
+        <thead>
+          <tr class="bg-gray-50 border-b">
+            <th class="text-left py-2 px-3 text-sm font-medium">Service</th>
+            <th class="text-left py-2 px-3 text-sm font-medium">Type</th>
+            <th class="text-right py-2 px-3 text-sm font-medium">Est. Monthly</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% system_costs.each do |li| %>
+            <tr class="border-b border-gray-100">
+              <td class="py-2 px-3 text-sm">
+                <%= li.description %>
+                <% if li.is_new_system %>
+                  <span class="text-xs text-blue-600 ml-1">(New)</span>
+                <% end %>
+              </td>
+              <td class="py-2 px-3 text-sm text-gray-500"><%= li.system_category || "Infrastructure" %></td>
+              <td class="py-2 px-3 text-sm text-right font-medium"><%= number_to_currency(li.display_price) %>/mo</td>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="bg-gray-50">
+            <td colspan="2" class="py-2 px-3 font-bold text-sm">Estimated Monthly Total</td>
+            <td class="py-2 px-3 text-right font-bold text-sm"><%= number_to_currency(system_costs.sum(&:display_price)) %>/mo</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  <% end %>
+
+  <!-- Grand Total -->
+  <div class="bg-gray-900 text-white p-6 rounded-lg mt-8">
+    <div class="flex justify-between items-center">
+      <div>
+        <h3 class="text-lg font-bold">Your Investment</h3>
+        <p class="text-sm text-gray-300">One-time development<%= " + estimated first month infrastructure" if system_costs.any? %></p>
+      </div>
+      <div class="text-right">
+        <div class="text-3xl font-bold"><%= number_to_currency(@bid.total) %></div>
+        <% if system_costs.any? %>
+          <div class="text-sm text-gray-300">+ ~<%= number_to_currency(system_costs.sum(&:display_price)) %>/mo ongoing</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <% if @bid.notes.present? %>
+    <div class="mt-6 border-t pt-4">
+      <h3 class="font-bold text-sm text-gray-500 uppercase mb-2">Additional Notes</h3>
+      <p class="text-sm whitespace-pre-wrap"><%= @bid.notes %></p>
+    </div>
+  <% end %>
+
+  <div class="mt-12 border-t pt-6 text-sm text-gray-400">
+    <p>This proposal is valid for 30 days from the date above.</p>
+    <p class="mt-2">To proceed, please contact us to discuss next steps and project timeline.</p>
+  </div>
+</div>

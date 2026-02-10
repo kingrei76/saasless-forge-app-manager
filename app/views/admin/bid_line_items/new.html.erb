@@ -1,0 +1,34 @@
+<h2 class="text-2xl font-bold mb-6">Add Line Item</h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <%= form_with(model: [:admin, @bid, @line_item], class: "space-y-4") do |f| %>
+      <div class="form-control">
+        <%= f.label :description, class: "label" %>
+        <%= f.text_field :description, class: "input input-bordered w-full" %>
+      </div>
+      <div class="grid grid-cols-3 gap-4" data-controller="line-item">
+        <div class="form-control">
+          <%= f.label :hours, class: "label" %>
+          <%= f.number_field :hours, class: "input input-bordered w-full", step: 0.5, data: { line_item_target: "hours", action: "input->line-item#calculateEstimate" } %>
+        </div>
+        <div class="form-control">
+          <%= f.label :rate, class: "label" %>
+          <%= f.number_field :rate, class: "input input-bordered w-full", step: 0.01, data: { line_item_target: "rate", action: "input->line-item#calculateEstimate" } %>
+        </div>
+        <div class="form-control">
+          <%= f.label :subtotal, class: "label" %>
+          <%= f.number_field :subtotal, class: "input input-bordered w-full", step: 0.01, readonly: true, data: { line_item_target: "subtotal" } %>
+        </div>
+      </div>
+      <div class="form-control">
+        <%= f.label :position, class: "label" %>
+        <%= f.number_field :position, class: "input input-bordered w-full" %>
+      </div>
+      <div class="flex gap-2">
+        <%= f.submit "Add Line Item", class: "btn btn-primary" %>
+        <%= link_to "Cancel", admin_bid_path(@bid), class: "btn btn-ghost" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -1,0 +1,49 @@
+<%= form_with(model: [:admin, cost_entry], class: "space-y-4") do |f| %>
+  <% if cost_entry.errors.any? %>
+    <div class="alert alert-error">
+      <ul><% cost_entry.errors.full_messages.each do |msg| %><li><%= msg %></li><% end %></ul>
+    </div>
+  <% end %>
+
+  <div class="form-control">
+    <%= f.label :app_id, "App", class: "label" %>
+    <%= f.select :app_id, options_from_collection_for_select(@apps, :id, :name, cost_entry.app_id), { prompt: "Select app..." }, class: "select select-bordered w-full" %>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :service_name, "Service", class: "label" %>
+    <%= f.text_field :service_name, class: "input input-bordered w-full", placeholder: "e.g. AWS, Heroku, Vercel" %>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="form-control">
+      <%= f.label :amount, class: "label" %>
+      <%= f.number_field :amount, class: "input input-bordered w-full", step: 0.01, min: 0 %>
+    </div>
+    <div class="form-control">
+      <%= f.label :currency, class: "label" %>
+      <%= f.text_field :currency, class: "input input-bordered w-full", value: cost_entry.currency || "USD" %>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4">
+    <div class="form-control">
+      <%= f.label :period_start, class: "label" %>
+      <%= f.date_field :period_start, class: "input input-bordered w-full" %>
+    </div>
+    <div class="form-control">
+      <%= f.label :period_end, class: "label" %>
+      <%= f.date_field :period_end, class: "input input-bordered w-full" %>
+    </div>
+  </div>
+
+  <div class="form-control">
+    <%= f.label :notes, class: "label" %>
+    <%= f.text_area :notes, class: "textarea textarea-bordered w-full", rows: 3 %>
+  </div>
+
+  <div class="flex gap-2">
+    <%= f.submit class: "btn btn-primary" %>
+    <%= link_to "Cancel", admin_cost_entries_path, class: "btn btn-ghost" %>
+  </div>
+<% end %>

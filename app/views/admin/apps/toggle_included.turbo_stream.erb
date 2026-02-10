@@ -1,0 +1,26 @@
+<%= turbo_stream.replace dom_id(@app) do %>
+  <tr id="<%= dom_id(@app) %>">
+    <td>
+      <%= link_to @app.name, admin_app_path(@app), class: "link link-primary font-medium" %>
+      <br><span class="text-xs opacity-60"><%= @app.full_name %></span>
+    </td>
+    <td><%= @app.github_account.display_name %></td>
+    <td><span class="badge badge-outline badge-sm"><%= @app.language || "—" %></span></td>
+    <td class="text-sm max-w-xs truncate"><%= @app.latest_commit_message&.truncate(50) %></td>
+    <td><%= @app.clients.count %></td>
+    <td>
+      <%= button_to toggle_included_admin_app_path(@app), method: :patch, class: "swap" do %>
+        <% if @app.included? %>
+          <span class="badge badge-success badge-sm cursor-pointer">Included</span>
+        <% else %>
+          <span class="badge badge-ghost badge-sm cursor-pointer">Excluded</span>
+        <% end %>
+      <% end %>
+    </td>
+    <td>
+      <%= link_to admin_app_path(@app), class: "btn btn-ghost btn-xs" do %>
+        <i class="fas fa-eye"></i>
+      <% end %>
+    </td>
+  </tr>
+<% end %>

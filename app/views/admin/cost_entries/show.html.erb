@@ -1,0 +1,17 @@
+<h2 class="text-2xl font-bold mb-6">Cost Entry</h2>
+
+<div class="card bg-base-100 shadow max-w-xl">
+  <div class="card-body">
+    <div class="grid grid-cols-2 gap-4 text-sm">
+      <div><span class="opacity-60">App</span><p class="font-medium"><%= link_to @cost_entry.app.name, admin_app_path(@cost_entry.app), class: "link link-primary" %></p></div>
+      <div><span class="opacity-60">Service</span><p class="font-medium"><%= @cost_entry.service_name %></p></div>
+      <div><span class="opacity-60">Amount</span><p class="font-medium"><%= number_to_currency(@cost_entry.amount) %> <%= @cost_entry.currency %></p></div>
+      <div><span class="opacity-60">Period</span><p class="font-medium"><%= @cost_entry.period_start %> — <%= @cost_entry.period_end %></p></div>
+      <div class="col-span-2"><span class="opacity-60">Notes</span><p><%= @cost_entry.notes || "—" %></p></div>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <%= link_to "Edit", edit_admin_cost_entry_path(@cost_entry), class: "btn btn-outline btn-sm" %>
+      <%= link_to "Back", admin_cost_entries_path, class: "btn btn-ghost btn-sm" %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,15 @@
+production:
+  daily_sync:
+    class: DailySyncJob
+    schedule: every day at 6am
+  recurring_billing:
+    class: RecurringBillingJob
+    schedule: every day at 7am
+
+development:
+  daily_sync:
+    class: DailySyncJob
+    schedule: every day at 6am
+  recurring_billing:
+    class: RecurringBillingJob
+    schedule: every day at 7am

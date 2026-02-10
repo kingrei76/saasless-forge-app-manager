@@ -1,0 +1,250 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Invoice #<%= @invoice.id %></h2>
+    <p class="text-sm opacity-60">
+      <%= @invoice.client.name %>
+      <% if @invoice.invoice_type == "bid_based" && @invoice.project %>
+        &mdash; <%= link_to @invoice.project.title, admin_project_path(@invoice.project), class: "link link-secondary" %>
+      <% elsif @invoice.period_start && @invoice.period_end %>
+        &mdash; <%= @invoice.period_start %> to <%= @invoice.period_end %>
+      <% end %>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <% if @invoice.status == "draft" %>
+      <%= link_to preview_send_admin_invoice_path(@invoice), class: "btn btn-primary btn-sm" do %>
+        <i class="fas fa-paper-plane mr-1"></i> Send to Stripe
+      <% end %>
+      <%= link_to edit_admin_invoice_path(@invoice), class: "btn btn-outline btn-sm" do %>
+        <i class="fas fa-edit mr-1"></i> Edit
+      <% end %>
+      <%= button_to archive_admin_invoice_path(@invoice), method: :post, class: "btn btn-ghost btn-sm", data: { turbo_confirm: "Archive this draft invoice?" } do %>
+        <i class="fas fa-archive mr-1"></i> Archive
+      <% end %>
+      <%= button_to admin_invoice_path(@invoice), method: :delete, class: "btn btn-ghost btn-sm text-error", data: { turbo_confirm: "Permanently delete this draft invoice?" } do %>
+        <i class="fas fa-trash mr-1"></i> Delete
+      <% end %>
+    <% elsif @invoice.status == "sent" && !@invoice.stripe_managed? %>
+      <%= button_to mark_paid_admin_invoice_path(@invoice), method: :post, class: "btn btn-success btn-sm" do %>
+        <i class="fas fa-check mr-1"></i> Mark Paid
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<% if @invoice.status == "void" %>
+  <div class="alert alert-warning mb-6">
+    <i class="fas fa-ban"></i>
+    <div class="flex-1">
+      <span class="font-medium">This invoice has been voided.</span>
+      <p class="text-sm">Need to fix and resend? Duplicate it as a new draft to make edits and send again.</p>
+    </div>
+    <%= button_to duplicate_as_draft_admin_invoice_path(@invoice), method: :post, class: "btn btn-sm btn-outline" do %>
+      <i class="fas fa-copy mr-1"></i> Duplicate as Draft
+    <% end %>
+  </div>
+<% end %>
+
+<% if @invoice.invoice_type == "bid_based" && @invoice.bid %>
+  <div class="alert alert-info mb-6">
+    <i class="fas fa-info-circle"></i>
+    <span>Created from <%= link_to "Bid: #{@invoice.bid.title}", admin_bid_path(@invoice.bid), class: "link link-primary font-medium" %></span>
+  </div>
+<% end %>
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Status</div>
+    <div class="stat-value text-lg"><span class="badge <%= @invoice.status_badge_class %>"><%= @invoice.status.capitalize %></span></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Type</div>
+    <div class="stat-value text-lg">
+      <% if @invoice.invoice_type == "bid_based" %>
+        <span class="badge badge-primary">Project</span>
+      <% else %>
+        <span class="badge badge-secondary">Usage</span>
+      <% end %>
+    </div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Payment</div>
+    <% type_badge = case @invoice.payment_type
+       when "deposit" then "badge-info"
+       when "final" then "badge-success"
+       when "infrastructure" then "badge-warning"
+       else "badge-ghost"
+       end %>
+    <div class="stat-value text-lg"><span class="badge <%= type_badge %>"><%= @invoice.payment_type_label %></span></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Total</div>
+    <div class="stat-value text-lg text-primary"><%= number_to_currency(@invoice.total) %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Stripe ID</div>
+    <div class="stat-value text-sm font-mono"><%= @invoice.stripe_invoice_id || "—" %></div>
+  </div>
+</div>
+
+<!-- Stripe Billing Details -->
+<% if @invoice.stripe_managed? %>
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body">
+      <h3 class="card-title text-base"><i class="fab fa-stripe text-purple-600 mr-2"></i> Stripe Details</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div>
+          <span class="opacity-60">Stripe Status</span>
+          <p class="font-medium"><%= @invoice.stripe_status || "—" %></p>
+        </div>
+        <div>
+          <span class="opacity-60">Collection Method</span>
+          <p class="font-medium">
+            <% if @invoice.collection_method == "charge_automatically" %>
+              <i class="fas fa-credit-card mr-1"></i> Auto-charge
+            <% else %>
+              <i class="fas fa-envelope mr-1"></i> Send Invoice
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="opacity-60">Due Date</span>
+          <p class="font-medium <%= @invoice.due_date && @invoice.due_date < Date.current && @invoice.status != 'paid' ? 'text-error' : '' %>">
+            <%= @invoice.due_date ? @invoice.due_date.strftime("%b %d, %Y") : "—" %>
+            <% if @invoice.due_date && @invoice.due_date < Date.current && @invoice.status != "paid" %>
+              <span class="badge badge-error badge-xs ml-1">Overdue</span>
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="opacity-60">Paid At</span>
+          <p class="font-medium text-success">
+            <%= @invoice.paid_at ? @invoice.paid_at.strftime("%b %d, %Y %l:%M %p") : "—" %>
+          </p>
+        </div>
+      </div>
+      <div class="mt-4 flex gap-2">
+        <% if @invoice.stripe_invoice_id.present? %>
+          <%= link_to "https://dashboard.stripe.com/invoices/#{@invoice.stripe_invoice_id}", target: "_blank", class: "btn btn-outline btn-sm" do %>
+            <i class="fab fa-stripe-s mr-1 text-purple-600"></i> View in Stripe Dashboard
+          <% end %>
+        <% end %>
+        <% if @invoice.stripe_hosted_invoice_url.present? %>
+          <%= link_to @invoice.stripe_hosted_invoice_url, target: "_blank", class: "btn btn-outline btn-sm" do %>
+            <i class="fas fa-external-link-alt mr-1"></i> Customer Payment Link
+          <% end %>
+        <% end %>
+        <% if @invoice.stripe_managed? && @invoice.status.in?(%w[sent]) %>
+          <%= button_to void_stripe_admin_invoice_path(@invoice), method: :post, class: "btn btn-error btn-outline btn-sm", data: { turbo_confirm: "Void this invoice in Stripe? This cannot be undone." } do %>
+            <i class="fas fa-ban mr-1"></i> Void Invoice
+          <% end %>
+        <% end %>
+        <% if @invoice.stripe_managed? && @invoice.status.in?(%w[sent]) && (Rails.env.development? || ENV["SKIP_AUTH"] == "true") %>
+          <%= button_to sync_stripe_admin_invoice_path(@invoice), method: :post, class: "btn btn-ghost btn-sm", title: "Dev only — sync status from Stripe" do %>
+            <i class="fas fa-sync-alt mr-1"></i> Sync from Stripe
+          <% end %>
+        <% end %>
+      </div>
+      <% if @invoice.stripe_managed? && @invoice.status == "sent" %>
+        <div class="mt-2">
+          <span class="text-xs opacity-60"><i class="fas fa-sync-alt mr-1"></i> Payment status synced via Stripe webhooks</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if @invoice.deposit? && @invoice.final_amount.present? %>
+  <div class="alert alert-info mb-6">
+    <i class="fas fa-info-circle"></i>
+    <div>
+      <span class="font-medium">50% Deposit Invoice</span>
+      <p class="text-sm">Remaining <%= number_to_currency(@invoice.final_amount) %> will be invoiced upon project completion.</p>
+    </div>
+  </div>
+<% elsif @invoice.final? && @invoice.parent_invoice.present? %>
+  <div class="alert alert-success mb-6">
+    <i class="fas fa-check-circle"></i>
+    <div>
+      <span class="font-medium">Final Payment Invoice</span>
+      <p class="text-sm">
+        This is the final 50% payment. Deposit invoice:
+        <%= link_to "##{@invoice.parent_invoice.id}", admin_invoice_path(@invoice.parent_invoice), class: "link link-primary" %>
+      </p>
+    </div>
+  </div>
+<% end %>
+
+<!-- Line Items -->
+<div class="card bg-base-100 shadow">
+  <div class="card-body">
+    <div class="flex justify-between items-center">
+      <h3 class="card-title text-base">Line Items</h3>
+      <% if @invoice.status == "draft" %>
+        <%= link_to new_admin_invoice_line_item_path(@invoice), class: "btn btn-ghost btn-xs" do %>
+          <i class="fas fa-plus mr-1"></i> Add Item
+        <% end %>
+      <% end %>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <% if @invoice.invoice_type == "bid_based" %>
+              <th>Hours</th>
+              <th>Rate</th>
+            <% else %>
+              <th>App</th>
+              <th>Internal Cost</th>
+              <th>Markup %</th>
+            <% end %>
+            <th>Amount</th>
+            <% if @invoice.status == "draft" %><th>Actions</th><% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% @line_items.each do |li| %>
+            <tr>
+              <td><%= li.description %></td>
+              <% if @invoice.invoice_type == "bid_based" %>
+                <td><%= li.hours %></td>
+                <td><%= number_to_currency(li.rate) %></td>
+              <% else %>
+                <td><%= li.app&.name || "—" %></td>
+                <td class="opacity-60"><%= number_to_currency(li.internal_cost) %></td>
+                <td><%= li.markup_percentage %>%</td>
+              <% end %>
+              <td class="font-medium"><%= number_to_currency(li.amount) %></td>
+              <% if @invoice.status == "draft" %>
+                <td class="flex gap-1">
+                  <%= link_to edit_admin_invoice_line_item_path(@invoice, li), class: "btn btn-ghost btn-xs" do %>
+                    <i class="fas fa-edit"></i>
+                  <% end %>
+                  <%= button_to admin_invoice_line_item_path(@invoice, li), method: :delete, class: "btn btn-ghost btn-xs text-error" do %>
+                    <i class="fas fa-trash"></i>
+                  <% end %>
+                </td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+        <tfoot>
+          <tr class="font-bold">
+            <td>Total</td>
+            <% if @invoice.invoice_type == "bid_based" %>
+              <td><%= @line_items.sum { |li| li.hours || 0 } %></td>
+              <td></td>
+            <% else %>
+              <td></td>
+              <td><%= number_to_currency(@invoice.subtotal) %></td>
+              <td></td>
+            <% end %>
+            <td><%= number_to_currency(@invoice.total) %></td>
+            <% if @invoice.status == "draft" %><td></td><% end %>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>

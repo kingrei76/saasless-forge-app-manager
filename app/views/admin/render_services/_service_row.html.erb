@@ -1,0 +1,64 @@
+<%= turbo_frame_tag service do %>
+  <tr id="<%= dom_id(service) %>" class="<%= service.suspended? ? 'opacity-50' : '' %>">
+    <td>
+      <div class="flex items-center gap-2">
+        <i class="fas <%= service.service_icon %> text-base-content/50"></i>
+        <div>
+          <div class="font-medium"><%= service.name %></div>
+          <% if service.suspended? %>
+            <span class="badge badge-error badge-xs">Suspended</span>
+          <% end %>
+        </div>
+      </div>
+    </td>
+    <td>
+      <span class="badge badge-ghost badge-sm"><%= service.service_type_label %></span>
+    </td>
+    <td>
+      <span class="font-mono text-sm"><%= service.plan || "—" %></span>
+    </td>
+    <td class="text-right">
+      <% if service.monthly_price > 0 %>
+        <span class="font-semibold"><%= number_to_currency(service.monthly_price) %></span>/mo
+      <% else %>
+        <span class="badge badge-success badge-sm">Free</span>
+      <% end %>
+    </td>
+    <td>
+      <% if service.linked? %>
+        <%= link_to service.app.name, admin_app_path(service.app), class: "link link-primary" %>
+      <% else %>
+        <span class="badge badge-warning badge-sm gap-1">
+          <i class="fas fa-exclamation-triangle text-xs"></i> Unlinked
+        </span>
+      <% end %>
+    </td>
+    <td>
+      <% if service.render_workspace %>
+        <span class="text-sm"><%= service.render_workspace.name %></span>
+      <% else %>
+        <span class="opacity-50">—</span>
+      <% end %>
+    </td>
+    <td>
+      <% if service.linked? %>
+        <%= button_to unlink_admin_render_service_path(service),
+            method: :post,
+            class: "btn btn-ghost btn-xs text-error",
+            data: { turbo: true, turbo_confirm: "Unlink #{service.name} from #{service.app.name}?" } do %>
+          <i class="fas fa-unlink"></i> Unlink
+        <% end %>
+      <% else %>
+        <%= form_with url: link_admin_render_service_path(service), method: :post, class: "flex gap-1 items-center", data: { turbo: true } do |f| %>
+          <%= f.select :app_id,
+              options_from_collection_for_select(apps, :id, :name),
+              { include_blank: "Select app..." },
+              class: "select select-bordered select-xs w-32" %>
+          <button type="submit" class="btn btn-primary btn-xs">
+            <i class="fas fa-link"></i>
+          </button>
+        <% end %>
+      <% end %>
+    </td>
+  </tr>
+<% end %>

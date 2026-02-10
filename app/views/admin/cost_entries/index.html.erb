@@ -1,0 +1,172 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Cost Monitoring</h2>
+  <div class="flex gap-2">
+    <%= button_to sync_render_admin_cost_entries_path(client_id: @selected_client&.id), method: :post, class: "btn btn-outline btn-sm" do %>
+      <i class="fas fa-sync mr-1"></i> Sync from Render
+    <% end %>
+    <%= link_to new_admin_cost_entry_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fas fa-plus mr-1"></i> Add Manual Entry
+    <% end %>
+  </div>
+</div>
+
+<%# Client Filter %>
+<div class="bg-base-100 rounded-box shadow p-4 mb-6">
+  <div class="flex flex-wrap gap-4 items-end">
+    <div class="form-control">
+      <label class="label">
+        <span class="label-text font-medium">Filter by Client</span>
+      </label>
+      <%= form_tag admin_cost_entries_path, method: :get, class: "flex gap-2" do %>
+        <%= select_tag :client_id,
+            options_from_collection_for_select(@clients_for_select, :id, :name, @selected_client&.id),
+            include_blank: "All Clients",
+            class: "select select-bordered select-sm w-64",
+            onchange: "this.form.submit()" %>
+      <% end %>
+    </div>
+
+    <div class="flex-1"></div>
+
+    <div class="text-right">
+      <div class="text-sm opacity-70">Billing Period</div>
+      <div class="font-semibold">
+        <%= @billing_period_start.strftime("%b %d") %> - <%= @billing_period_end.strftime("%b %d, %Y") %>
+      </div>
+      <div class="text-xs opacity-60">
+        Day <%= @days_into_cycle %> of <%= @days_in_cycle %> (<%= @cycle_progress %>%)
+      </div>
+    </div>
+  </div>
+</div>
+
+<% if @unified_costs.present? %>
+  <%# Unified Costs by App Table %>
+  <div class="overflow-x-auto bg-base-100 rounded-box shadow mb-6">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>App</th>
+          <th>Services</th>
+          <th class="text-right">Cost Since Last Bill</th>
+          <th class="text-right">Est. Monthly Cost</th>
+          <th class="text-center">Days Active</th>
+          <% unless @selected_client %>
+            <th>Client</th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% @unified_costs.values.sort_by { |data| data[:app]&.name.to_s.downcase }.each do |data| %>
+          <% app = data[:app] %>
+          <% next unless app %>
+          <tr>
+            <td>
+              <%= link_to app.name, admin_app_path(app), class: "link link-primary font-medium" %>
+            </td>
+            <td>
+              <div class="flex flex-wrap gap-1">
+                <%# Infrastructure services %>
+                <% data[:services].each do |cost| %>
+                  <span class="badge badge-sm gap-1" title="<%= cost.plan_name %>">
+                    <% case cost.service_type %>
+                    <% when "web_service" %>
+                      <i class="fas fa-server text-xs"></i>
+                    <% when "postgres" %>
+                      <i class="fas fa-database text-xs"></i>
+                    <% when "redis" %>
+                      <i class="fas fa-bolt text-xs"></i>
+                    <% when "cron_job" %>
+                      <i class="fas fa-clock text-xs"></i>
+                    <% else %>
+                      <i class="fas fa-cloud text-xs"></i>
+                    <% end %>
+                    <%= cost.plan_name || "unknown" %>
+                  </span>
+                <% end %>
+                <%# AI API badge if app has API costs %>
+                <% if data[:api_calls] > 0 %>
+                  <span class="badge badge-sm badge-primary gap-1" title="<%= data[:api_calls] %> API calls">
+                    <i class="fas fa-brain text-xs"></i>
+                    AI API (<%= data[:api_calls] %>)
+                  </span>
+                <% end %>
+              </div>
+            </td>
+            <td class="text-right font-semibold">
+              <%= number_to_currency(data[:total_cost]) %>
+            </td>
+            <td class="text-right">
+              <span class="opacity-70"><%= number_to_currency(data[:total_projected]) %></span>
+            </td>
+            <td class="text-center">
+              <span class="text-sm"><%= data[:days_active] %> / <%= data[:days_in_period] %></span>
+            </td>
+            <% unless @selected_client %>
+              <td>
+                <%= data[:clients]&.join(", ") %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+      <tfoot>
+        <tr class="font-bold bg-base-200">
+          <td colspan="2">Total</td>
+          <td class="text-right text-primary"><%= number_to_currency(@grand_total_current) %></td>
+          <td class="text-right"><%= number_to_currency(@grand_total_projected) %></td>
+          <td></td>
+          <% unless @selected_client %>
+            <td></td>
+          <% end %>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+<% else %>
+  <div class="alert alert-info mb-6">
+    <i class="fas fa-info-circle"></i>
+    <span>No costs found for this billing period. Click "Sync from Render" to fetch infrastructure costs, or configure AI API keys on apps to track API usage.</span>
+  </div>
+<% end %>
+
+<%# Manual Entries Section %>
+<% if @manual_entries.present? %>
+  <div class="mb-6">
+    <h3 class="text-lg font-semibold mb-3">Manual Cost Entries</h3>
+    <div class="overflow-x-auto bg-base-100 rounded-box shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>App</th>
+            <th>Service</th>
+            <th class="text-right">Amount</th>
+            <th>Period</th>
+            <th>Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @manual_entries.each do |entry| %>
+            <tr>
+              <td><%= link_to entry.app.name, admin_app_path(entry.app), class: "link link-primary" %></td>
+              <td><%= entry.service_name %></td>
+              <td class="text-right font-medium"><%= number_to_currency(entry.amount) %></td>
+              <td class="text-sm"><%= entry.period_start %> - <%= entry.period_end %></td>
+              <td class="text-sm opacity-70 max-w-xs truncate"><%= entry.notes %></td>
+              <td class="flex gap-1">
+                <%= link_to edit_admin_cost_entry_path(entry), class: "btn btn-ghost btn-xs" do %>
+                  <i class="fas fa-edit"></i>
+                <% end %>
+                <%= button_to admin_cost_entry_path(entry), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Delete?" } do %>
+                  <i class="fas fa-trash"></i>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+

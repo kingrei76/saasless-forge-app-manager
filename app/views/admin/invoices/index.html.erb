@@ -1,0 +1,113 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Invoices</h2>
+  <div class="flex gap-2">
+    <%= button_to admin_generate_monthly_billing_path, method: :post, class: "btn btn-outline btn-sm", data: { turbo_confirm: "Generate monthly infrastructure invoices for all clients?" } do %>
+      <i class="fas fa-calendar mr-1"></i> Generate Monthly Invoices
+    <% end %>
+    <%= link_to new_admin_invoice_path, class: "btn btn-primary btn-sm" do %>
+      <i class="fas fa-plus mr-1"></i> New Usage Invoice
+    <% end %>
+  </div>
+</div>
+
+<div class="flex gap-2 mb-4 flex-wrap">
+  <span class="text-sm opacity-60 self-center mr-2">Status:</span>
+  <%= link_to "All", admin_invoices_path, class: "btn btn-sm #{params[:status].blank? ? 'btn-primary' : 'btn-ghost'}" %>
+  <% %w[draft sent paid void overdue failed].each do |status| %>
+    <%= link_to status.capitalize, admin_invoices_path(status: status), class: "btn btn-sm #{params[:status] == status ? 'btn-primary' : 'btn-ghost'}" %>
+  <% end %>
+  <%= link_to "Archived", admin_invoices_path(status: "archived"), class: "btn btn-sm #{params[:status] == 'archived' ? 'btn-neutral' : 'btn-ghost'}" %>
+</div>
+
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Type</th>
+        <th>Payment</th>
+        <th>Client</th>
+        <th>Project/Period</th>
+        <th>Total</th>
+        <th>Status</th>
+        <th>Stripe Status</th>
+        <th>Stripe</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @invoices.each do |invoice| %>
+        <tr>
+          <td><%= invoice.id %></td>
+          <td>
+            <% if invoice.invoice_type == "bid_based" %>
+              <span class="badge badge-primary badge-sm">Project</span>
+            <% else %>
+              <span class="badge badge-secondary badge-sm">Usage</span>
+            <% end %>
+          </td>
+          <td>
+            <% type_badge = case invoice.payment_type
+               when "deposit" then "badge-info"
+               when "final" then "badge-success"
+               when "infrastructure" then "badge-warning"
+               else "badge-ghost"
+               end %>
+            <span class="badge <%= type_badge %> badge-sm"><%= invoice.payment_type_label %></span>
+          </td>
+          <td><%= link_to invoice.client.name, admin_client_path(invoice.client), class: "link link-primary" %></td>
+          <td class="text-sm">
+            <% if invoice.project %>
+              <%= link_to invoice.project.title, admin_project_path(invoice.project), class: "link link-secondary" %>
+            <% elsif invoice.period_start && invoice.period_end %>
+              <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+            <% else %>
+              —
+            <% end %>
+          </td>
+          <td class="font-medium"><%= number_to_currency(invoice.total) %></td>
+          <td>
+            <span class="badge <%= invoice.status_badge_class %> badge-sm"><%= invoice.status.capitalize %></span>
+          </td>
+          <td>
+            <% if invoice.stripe_status.present? %>
+              <span class="badge badge-outline badge-sm"><%= invoice.stripe_status %></span>
+            <% else %>
+              <span class="opacity-30">—</span>
+            <% end %>
+          </td>
+          <td class="flex gap-1">
+            <% if invoice.stripe_invoice_id.present? %>
+              <%= link_to "https://dashboard.stripe.com/invoices/#{invoice.stripe_invoice_id}", target: "_blank", class: "btn btn-ghost btn-xs", title: "View in Stripe Dashboard" do %>
+                <i class="fab fa-stripe-s text-purple-600"></i>
+              <% end %>
+            <% end %>
+            <% if invoice.stripe_hosted_invoice_url.present? %>
+              <%= link_to invoice.stripe_hosted_invoice_url, target: "_blank", class: "btn btn-ghost btn-xs", title: "Customer Payment Link" do %>
+                <i class="fas fa-external-link-alt text-info"></i>
+              <% end %>
+            <% end %>
+          </td>
+          <td>
+            <div class="flex gap-1">
+              <%= link_to admin_invoice_path(invoice), class: "btn btn-ghost btn-xs" do %>
+                <i class="fas fa-eye"></i>
+              <% end %>
+              <% if invoice.status == "draft" %>
+                <%= link_to preview_send_admin_invoice_path(invoice), class: "btn btn-primary btn-xs", title: "Send to Stripe" do %>
+                  <i class="fas fa-paper-plane"></i>
+                <% end %>
+                <%= button_to archive_admin_invoice_path(invoice), method: :post, class: "btn btn-ghost btn-xs", title: "Archive", data: { turbo_confirm: "Archive this draft invoice?" } do %>
+                  <i class="fas fa-archive"></i>
+                <% end %>
+                <%= button_to admin_invoice_path(invoice), method: :delete, class: "btn btn-ghost btn-xs text-error", title: "Delete", data: { turbo_confirm: "Permanently delete this draft invoice?" } do %>
+                  <i class="fas fa-trash"></i>
+                <% end %>
+              <% end %>
+            </div>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
