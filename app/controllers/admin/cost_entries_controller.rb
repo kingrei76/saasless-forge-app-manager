@@ -46,21 +46,12 @@ class Admin::CostEntriesController < Admin::BaseController
       # Build unified costs structure
       build_unified_costs(app_ids)
     else
-      # Show all cost entries when no client selected (legacy view)
+      # Show all apps with their Render and API costs
       @billing_period_start = Date.current.beginning_of_month
       @billing_period_end = Date.current.end_of_month
       @days_into_cycle = Date.current.day
       @days_in_cycle = Date.current.end_of_month.day
       @cycle_progress = (@days_into_cycle.to_f / @days_in_cycle * 100).round(1)
-
-      # Get all calculated costs grouped by app
-      @costs_by_app = CalculatedCost
-        .in_period(@billing_period_start, @billing_period_end)
-        .includes(:app, :client)
-        .group_by(&:app)
-
-      @total_current = @costs_by_app.values.flatten.sum(&:total_cost)
-      @total_projected = @costs_by_app.values.flatten.sum(&:projected_monthly_cost)
 
       # All manual entries for the period
       @manual_entries = CostEntry.manual_entries
@@ -76,8 +67,8 @@ class Admin::CostEntriesController < Admin::BaseController
         .index_by(&:app_id)
       @api_total_cost = @api_costs_by_app.values.sum { |r| r.total_cost.to_f }
 
-      # Build unified costs structure
-      build_unified_costs
+      # Build unified costs from Render services and API usage
+      build_unified_costs_from_services
     end
 
     # Legacy: keep @cost_entries for backward compatibility
@@ -196,23 +187,57 @@ class Admin::CostEntriesController < Admin::BaseController
       @unified_costs[app_id] ||= { app: app, infra_cost: 0, infra_projected: 0, api_cost: 0, api_calls: 0, services: [], days_active: @days_into_cycle, days_in_period: @days_in_cycle, clients: [] }
       @unified_costs[app_id][:api_cost] = data.total_cost.to_f
       @unified_costs[app_id][:api_calls] = data.call_count.to_i
-      # Add clients from app assignments if not already set from infrastructure costs
       @unified_costs[app_id][:clients] = app.clients.pluck(:name) if @unified_costs[app_id][:clients].blank?
     end
 
-    # Calculate combined totals
+    finalize_unified_costs
+  end
+
+  def build_unified_costs_from_services
+    @unified_costs = {}
+
+    # Include all apps that have Render services (regardless of client)
+    App.includes(:render_services, :clients, :api_usage_logs).find_each do |app|
+      render_services = app.render_services.active
+      api_data = @api_costs_by_app[app.id]
+
+      next if render_services.empty? && api_data.nil?
+
+      infra_cost = render_services.sum(&:monthly_price)
+      # Prorate based on days into the month
+      prorated_infra = @days_into_cycle > 0 ? (infra_cost.to_f / @days_in_cycle) * @days_into_cycle : 0
+
+      @unified_costs[app.id] = {
+        app: app,
+        infra_cost: prorated_infra.round(2),
+        infra_projected: infra_cost.round(2),
+        api_cost: api_data&.total_cost.to_f,
+        api_calls: api_data&.call_count.to_i,
+        render_services: render_services,
+        days_active: @days_into_cycle,
+        days_in_period: @days_in_cycle,
+        clients: app.clients.pluck(:name)
+      }
+    end
+
+    @total_current = @unified_costs.values.sum { |d| d[:infra_cost] }
+    @total_projected = @unified_costs.values.sum { |d| d[:infra_projected] }
+
+    finalize_unified_costs
+  end
+
+  def finalize_unified_costs
     @unified_costs.each do |app_id, data|
       data[:total_cost] = data[:infra_cost] + data[:api_cost]
-      # Project API costs for full month
       if @days_into_cycle > 0
         data[:api_projected] = (data[:api_cost] / @days_into_cycle) * @days_in_cycle
       else
         data[:api_projected] = 0
       end
-      data[:total_projected] = data[:infra_projected] + data[:api_projected]
+      data[:total_projected] = (data[:infra_projected] || 0) + data[:api_projected]
     end
 
-    @grand_total_current = @total_current + @api_total_cost
-    @grand_total_projected = @total_projected + @unified_costs.values.sum { |d| d[:api_projected] }
+    @grand_total_current = (@total_current || 0) + @api_total_cost
+    @grand_total_projected = (@total_projected || 0) + @unified_costs.values.sum { |d| d[:api_projected] }
   end
 end

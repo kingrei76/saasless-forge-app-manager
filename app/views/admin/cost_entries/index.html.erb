@@ -66,23 +66,34 @@
             </td>
             <td>
               <div class="flex flex-wrap gap-1">
-                <%# Infrastructure services %>
-                <% data[:services].each do |cost| %>
-                  <span class="badge badge-sm gap-1" title="<%= cost.plan_name %>">
-                    <% case cost.service_type %>
-                    <% when "web_service" %>
-                      <i class="fas fa-server text-xs"></i>
-                    <% when "postgres" %>
-                      <i class="fas fa-database text-xs"></i>
-                    <% when "redis" %>
-                      <i class="fas fa-bolt text-xs"></i>
-                    <% when "cron_job" %>
-                      <i class="fas fa-clock text-xs"></i>
-                    <% else %>
-                      <i class="fas fa-cloud text-xs"></i>
-                    <% end %>
-                    <%= cost.plan_name || "unknown" %>
-                  </span>
+                <%# Render services (direct from RenderService model) %>
+                <% if data[:render_services] %>
+                  <% data[:render_services].each do |rs| %>
+                    <span class="badge badge-sm gap-1" title="<%= rs.plan %> - $<%= rs.monthly_price %>/mo">
+                      <i class="fas <%= rs.service_icon %> text-xs"></i>
+                      <%= rs.plan || "free" %>
+                    </span>
+                  <% end %>
+                <% end %>
+                <%# CalculatedCost services (client-filtered view) %>
+                <% if data[:services]&.any? %>
+                  <% data[:services].each do |cost| %>
+                    <span class="badge badge-sm gap-1" title="<%= cost.plan_name %>">
+                      <% case cost.service_type %>
+                      <% when "web_service" %>
+                        <i class="fas fa-server text-xs"></i>
+                      <% when "postgres" %>
+                        <i class="fas fa-database text-xs"></i>
+                      <% when "redis" %>
+                        <i class="fas fa-bolt text-xs"></i>
+                      <% when "cron_job" %>
+                        <i class="fas fa-clock text-xs"></i>
+                      <% else %>
+                        <i class="fas fa-cloud text-xs"></i>
+                      <% end %>
+                      <%= cost.plan_name || "unknown" %>
+                    </span>
+                  <% end %>
                 <% end %>
                 <%# AI API badge if app has API costs %>
                 <% if data[:api_calls] > 0 %>
