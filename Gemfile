@@ -37,6 +37,9 @@ gem "actiontext"
 # Redis (ActionCable in production)
 gem "redis", ">= 4.0.1"
 
+# HTTP client (Google OAuth)
+gem "faraday"
+
 # JSON APIs
 gem "jbuilder"
 
