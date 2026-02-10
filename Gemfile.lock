@@ -74,25 +74,6 @@ GEM
       minitest (>= 5.1)
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
-    aws-eventstream (1.4.0)
-    aws-partitions (1.1213.0)
-    aws-sdk-core (3.242.0)
-      aws-eventstream (~> 1, >= 1.3.0)
-      aws-partitions (~> 1, >= 1.992.0)
-      aws-sigv4 (~> 1.9)
-      base64
-      bigdecimal
-      jmespath (~> 1, >= 1.6.1)
-      logger
-    aws-sdk-kms (1.121.0)
-      aws-sdk-core (~> 3, >= 3.241.4)
-      aws-sigv4 (~> 1.5)
-    aws-sdk-s3 (1.213.0)
-      aws-sdk-core (~> 3, >= 3.241.4)
-      aws-sdk-kms (~> 1)
-      aws-sigv4 (~> 1.5)
-    aws-sigv4 (1.12.1)
-      aws-eventstream (~> 1, >= 1.0.2)
     base64 (0.3.0)
     bcrypt (3.1.21)
     benchmark (0.5.0)
@@ -127,6 +108,7 @@ GEM
       factory_bot (~> 6.5)
       railties (>= 6.1.0)
     ffi (1.17.3-aarch64-linux-gnu)
+    ffi (1.17.3-x86_64-linux-gnu)
     fugit (1.12.1)
       et-orbi (~> 1.4)
       raabro (~> 1.4)
@@ -150,7 +132,6 @@ GEM
     jbuilder (2.14.1)
       actionview (>= 7.0.0)
       activesupport (>= 7.0.0)
-    jmespath (1.6.2)
     logger (1.7.0)
     loofah (2.25.0)
       crass (~> 1.0.2)
@@ -180,8 +161,11 @@ GEM
     nio4r (2.7.5)
     nokogiri (1.19.0-aarch64-linux-gnu)
       racc (~> 1.4)
+    nokogiri (1.19.0-x86_64-linux-gnu)
+      racc (~> 1.4)
     orm_adapter (0.5.0)
     pg (1.6.3-aarch64-linux)
+    pg (1.6.3-x86_64-linux)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -312,10 +296,10 @@ GEM
 
 PLATFORMS
   aarch64-linux-gnu
+  x86_64-linux
 
 DEPENDENCIES
   actiontext
-  aws-sdk-s3
   bootsnap
   debug
   devise
