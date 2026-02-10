@@ -22,3 +22,31 @@ end
 puts "Seeding Render pricing data..."
 RenderPricingScraper.new.seed_default_prices
 puts "Render pricing data seeded."
+
+# Clients
+puts "Seeding clients..."
+clients = {
+  "Thayne Lewis" => { email: "Thayne@Ajetservices.com", company: "AJET Services", markup: "30.0", app: "AJet-Admin-App" },
+  "Internal Apps" => { email: "ammonlewis@gmail.com", company: "SaaSless Forge", markup: nil, app: "saasless-forge-app-manager" },
+  "Chris Eberth" => { email: "", company: "Green leaf Landscaping", markup: "30.0", app: "greenleaf-bidding-tool" }
+}
+
+clients.each do |name, data|
+  client = Client.find_or_create_by!(name: name) do |c|
+    c.email = data[:email]
+    c.company = data[:company]
+    c.markup_percentage = data[:markup]
+    c.collection_method = "send_invoice"
+  end
+
+  if data[:app].present?
+    app = App.find_by(name: data[:app])
+    if app
+      AppAssignment.find_or_create_by!(app: app, client: client)
+      puts "  #{name} -> #{app.name}"
+    else
+      puts "  #{name} -> app '#{data[:app]}' not found (will be linked after app sync)"
+    end
+  end
+end
+puts "Clients seeded."
