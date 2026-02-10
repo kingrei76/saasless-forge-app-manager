@@ -3,9 +3,9 @@
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 #
 
-user = User.find_or_create_by!(email: 'admin@example.com') do |user|
-  user.password = '123456'
-  user.password_confirmation = '123456'
+user = User.find_or_create_by!(email: "ammonlewis@gmail.com") do |user|
+  user.name = "Ammon Lewis"
+  user.password = SecureRandom.hex(16)
 end
 user.update!(admin: true, role: :admin) unless user.admin?
 
