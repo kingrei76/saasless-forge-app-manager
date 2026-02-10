@@ -2,8 +2,8 @@ class RenderApiService
   BASE_URL = "https://api.render.com/v1"
 
   def initialize(api_key: nil)
-    @api_key = api_key || Setting[:render_api_key]
-    raise ArgumentError, "Render API key is not configured" if @api_key.blank?
+    @api_key = api_key
+    raise ArgumentError, "Render API key is required. Configure it on a GitHub account." if @api_key.blank?
   end
 
   def test_connection

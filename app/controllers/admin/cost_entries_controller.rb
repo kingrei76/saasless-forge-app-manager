@@ -86,22 +86,37 @@ class Admin::CostEntriesController < Admin::BaseController
   end
 
   def sync_render
-    results = { metadata: {}, costs: {} }
+    accounts_with_render = GithubAccount.with_render
 
-    # Sync app metadata from Render
-    results[:metadata] = RenderSyncService.new.sync_app_metadata
+    if accounts_with_render.empty?
+      redirect_to admin_cost_entries_path(client_id: params[:client_id]), alert: "No GitHub accounts have Render API keys configured."
+      return
+    end
+
+    metadata_results = { updated: 0, matched: 0, unmatched: [], services_synced: 0 }
+    errors = []
+
+    accounts_with_render.each do |account|
+      begin
+        result = RenderSyncService.new(github_account: account).sync_app_metadata
+        metadata_results[:updated] += result[:updated].to_i
+        metadata_results[:services_synced] += result[:services_synced].to_i
+        metadata_results[:unmatched].concat(result[:unmatched] || [])
+      rescue StandardError => e
+        errors << "#{account.display_name}: #{e.message}"
+      end
+    end
 
     # Calculate costs for all clients
-    results[:costs] = RenderCostCalculator.new.calculate_all_clients
+    cost_results = RenderCostCalculator.new.calculate_all_clients
 
     messages = []
-    messages << "#{results[:metadata][:updated]} apps updated with Render metadata" if results[:metadata][:updated].to_i > 0
-    messages << "#{results[:costs][:calculated]} cost calculations created/updated" if results[:costs][:calculated].to_i > 0
+    messages << "#{metadata_results[:updated]} apps updated from #{accounts_with_render.count} Render account(s)" if metadata_results[:updated] > 0
+    messages << "#{cost_results[:calculated]} cost calculations created/updated" if cost_results[:calculated].to_i > 0
 
     notice = "Render sync complete. #{messages.join(', ')}."
-    if results[:metadata][:unmatched]&.any?
-      notice += " Unmatched services: #{results[:metadata][:unmatched].join(', ')}."
-    end
+    notice += " Unmatched: #{metadata_results[:unmatched].join(', ')}." if metadata_results[:unmatched].any?
+    notice += " Errors: #{errors.join('; ')}" if errors.any?
 
     redirect_to admin_cost_entries_path(client_id: params[:client_id]), notice: notice
   rescue => e
