@@ -1,5 +1,5 @@
 <div class="flex justify-between items-center mb-6">
-  <h2 class="text-2xl font-bold">Cost Monitoring</h2>
+  <h2 class="text-2xl font-bold">App Cost Monitoring</h2>
   <div class="flex gap-2">
     <%= button_to sync_render_admin_cost_entries_path(client_id: @selected_client&.id), method: :post, class: "btn btn-outline btn-sm" do %>
       <i class="fas fa-sync mr-1"></i> Sync from Render
@@ -126,7 +126,14 @@
 <% else %>
   <div class="alert alert-info mb-6">
     <i class="fas fa-info-circle"></i>
-    <span>No costs found for this billing period. Click "Sync from Render" to fetch infrastructure costs, or configure AI API keys on apps to track API usage.</span>
+    <div>
+      <p>No costs found for this billing period.</p>
+      <ol class="list-decimal list-inside mt-2 text-sm opacity-80 space-y-1">
+        <li>Add GitHub accounts with Render API keys at <strong><%= link_to "GitHub Accounts", admin_github_accounts_path, class: "link" %></strong></li>
+        <li>Sync apps from GitHub at <strong><%= link_to "Apps", admin_apps_path, class: "link" %></strong></li>
+        <li>Click <strong>"Sync from Render"</strong> above to fetch infrastructure costs</li>
+      </ol>
+    </div>
   </div>
 <% end %>
 
