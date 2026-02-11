@@ -6,6 +6,8 @@ class StripeWebhookService
   end
 
   def process!
+    configure_stripe!
+
     case @type
     when "invoice.paid"
       handle_invoice_paid
@@ -129,6 +131,11 @@ class StripeWebhookService
 
       Rails.logger.info("StripeWebhookService: Payment method saved for Client ##{client.id}")
     end
+  end
+
+  def configure_stripe!
+    key = Setting[:stripe_api_key].presence || ENV["STRIPE_API_KEY"]
+    Stripe.api_key = key if key.present?
   end
 
   def find_invoice

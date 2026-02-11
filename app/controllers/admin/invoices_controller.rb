@@ -1,6 +1,7 @@
 class Admin::InvoicesController < Admin::BaseController
   before_action :require_admin!
   before_action :set_invoice, only: [:show, :edit, :update, :destroy, :send_to_stripe, :mark_paid, :archive, :preview_send, :void_stripe, :duplicate_as_draft, :sync_stripe]
+  before_action :configure_stripe!, only: [:void_stripe, :sync_stripe]
 
   def index
     @invoices = Invoice.includes(:client).order(created_at: :desc)
@@ -202,6 +203,11 @@ class Admin::InvoicesController < Admin::BaseController
 
   def set_invoice
     @invoice = Invoice.find(params[:id])
+  end
+
+  def configure_stripe!
+    key = Setting[:stripe_api_key].presence || ENV["STRIPE_API_KEY"]
+    Stripe.api_key = key if key.present?
   end
 
   def invoice_params

@@ -4,6 +4,7 @@ class StripePaymentMethodService
   end
 
   def create_setup_session(success_url:, cancel_url:)
+    configure_stripe!
     ensure_stripe_customer!
 
     Stripe::Checkout::Session.create(
@@ -19,6 +20,7 @@ class StripePaymentMethodService
   end
 
   def sync_default_payment_method!
+    configure_stripe!
     return unless @client.stripe_customer_id.present?
 
     customer = Stripe::Customer.retrieve(@client.stripe_customer_id)
@@ -47,6 +49,11 @@ class StripePaymentMethodService
   end
 
   private
+
+  def configure_stripe!
+    key = Setting[:stripe_api_key].presence || ENV["STRIPE_API_KEY"]
+    Stripe.api_key = key if key.present?
+  end
 
   def ensure_stripe_customer!
     return if @client.stripe_customer_id.present?
