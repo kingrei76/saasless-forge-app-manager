@@ -164,16 +164,7 @@ class MonthlyInfrastructureBillingService
   end
 
   def estimate_service_cost(render_service)
-    # Look up the price from RenderPrice table
-    price = RenderPrice.where(
-      service_type: render_service.service_type,
-      plan_name: render_service.plan
-    ).where("effective_from <= ?", @billing_period_start)
-     .where("effective_until IS NULL OR effective_until >= ?", @billing_period_end)
-     .order(effective_from: :desc)
-     .first
-
-    price&.monthly_price || 0
+    render_service.monthly_price
   end
 
   def apply_markup(cost, markup_percentage)
