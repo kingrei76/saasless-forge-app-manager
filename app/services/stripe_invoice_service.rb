@@ -7,6 +7,8 @@ class StripeInvoiceService
   MINIMUM_SEND_AMOUNT = 0.50 # Stripe minimum for USD invoices
 
   def create_and_send!
+    configure_stripe!
+
     if @invoice.total < MINIMUM_SEND_AMOUNT
       raise "Invoice total (#{@invoice.total}) is below Stripe's minimum of $#{'%.2f' % MINIMUM_SEND_AMOUNT}. Costs will accumulate until the next billing period."
     end
@@ -95,6 +97,11 @@ class StripeInvoiceService
 
   def determine_days_until_due
     @invoice.recurring_invoice&.days_until_due || 30
+  end
+
+  def configure_stripe!
+    key = Setting[:stripe_api_key].presence || ENV["STRIPE_API_KEY"]
+    Stripe.api_key = key if key.present?
   end
 
   def ensure_stripe_customer!
