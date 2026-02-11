@@ -1,6 +1,6 @@
 class StripeWebhooksController < ApplicationController
   skip_before_action :verify_authenticity_token
-  skip_before_action :authenticate_user!, if: -> { defined?(super) }
+  skip_before_action :authenticate_user!
 
   def create
     payload = request.body.read
