@@ -57,6 +57,7 @@ class MonthlyInfrastructureBillingService
     @client.invoices
            .infrastructure
            .where(period_start: @billing_period_start, period_end: @billing_period_end)
+           .where.not(status: "void")
            .exists?
   end
 
