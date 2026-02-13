@@ -1,56 +1,71 @@
 <div class="space-y-6">
-  <h1 class="text-2xl font-bold">Whitelisted Emails</h1>
-  <p class="text-sm opacity-70">Only these email addresses can sign in with Google OAuth.</p>
+  <h1 class="text-2xl font-bold">Users</h1>
 
-  <!-- Add email form -->
-  <div class="card bg-base-100 shadow">
-    <div class="card-body">
-      <h2 class="card-title text-lg">Add Email</h2>
-      <%= form_with model: @allowed_email, url: admin_users_path, class: "flex items-end gap-3" do |f| %>
-        <div class="form-control flex-1">
-          <%= f.label :email, class: "label" do %>
-            <span class="label-text">Email address</span>
-          <% end %>
-          <%= f.email_field :email, placeholder: "user@example.com", class: "input input-bordered w-full", required: true %>
-          <% if @allowed_email.errors[:email].any? %>
-            <label class="label">
-              <span class="label-text-alt text-error"><%= @allowed_email.errors[:email].first %></span>
-            </label>
-          <% end %>
-        </div>
-        <%= f.submit "Add to Whitelist", class: "btn btn-primary" %>
-      <% end %>
-    </div>
-  </div>
-
-  <!-- Allowed emails list -->
+  <!-- Active Users -->
   <div class="card bg-base-100 shadow">
     <div class="card-body">
       <h2 class="card-title text-lg">
-        Allowed Emails
-        <span class="badge badge-neutral"><%= @allowed_emails.size %></span>
+        Active Users
+        <span class="badge badge-neutral"><%= @users.size %></span>
       </h2>
 
-      <% if @allowed_emails.any? %>
+      <% if @users.any? %>
         <div class="overflow-x-auto">
           <table class="table">
             <thead>
               <tr>
+                <th>User</th>
                 <th>Email</th>
-                <th>Added</th>
+                <th>Role</th>
+                <th>Provider</th>
+                <th>Joined</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              <% @allowed_emails.each do |allowed| %>
+              <% @users.each do |user| %>
                 <tr class="hover">
-                  <td class="font-mono"><%= allowed.email %></td>
-                  <td class="text-sm opacity-70"><%= allowed.created_at.strftime("%b %d, %Y") %></td>
+                  <td>
+                    <div class="flex items-center gap-3">
+                      <div class="avatar placeholder">
+                        <% if user.avatar_url.present? %>
+                          <div class="w-8 rounded-full">
+                            <img src="<%= user.avatar_url %>" alt="<%= user.name %>" />
+                          </div>
+                        <% else %>
+                          <div class="bg-neutral text-neutral-content rounded-full w-8">
+                            <span class="text-xs"><%= user.name&.first&.upcase || "?" %></span>
+                          </div>
+                        <% end %>
+                      </div>
+                      <span class="font-medium"><%= user.name || "—" %></span>
+                    </div>
+                  </td>
+                  <td class="font-mono text-sm"><%= user.email %></td>
+                  <td>
+                    <span class="badge badge-sm <%= user.admin? ? 'badge-primary' : 'badge-ghost' %>">
+                      <%= user.role&.capitalize || "—" %>
+                    </span>
+                  </td>
+                  <td class="text-sm">
+                    <% if user.provider.present? %>
+                      <i class="fab fa-google text-xs mr-1"></i> Google
+                    <% else %>
+                      <i class="fas fa-key text-xs mr-1"></i> Password
+                    <% end %>
+                  </td>
+                  <td class="text-sm opacity-70">
+                    <%= user.created_at.strftime("%b %d, %Y") %>
+                  </td>
                   <td class="text-right">
-                    <%= button_to admin_user_path(allowed), method: :delete,
-                          class: "btn btn-ghost btn-sm text-error",
-                          form: { data: { turbo_confirm: "Remove #{allowed.email} from the whitelist?" } } do %>
-                      <i class="fas fa-trash-alt"></i> Remove
+                    <% if user != current_user %>
+                      <%= button_to impersonate_admin_user_path(user), method: :post,
+                            class: "btn btn-ghost btn-xs",
+                            form: { data: { turbo_confirm: "Sign in as #{user.email}?" } } do %>
+                        <i class="fas fa-user-secret"></i> Impersonate
+                      <% end %>
+                    <% else %>
+                      <span class="badge badge-sm badge-outline">You</span>
                     <% end %>
                   </td>
                 </tr>
@@ -60,8 +75,76 @@
         </div>
       <% else %>
         <div class="text-center py-8 opacity-50">
-          <i class="fas fa-envelope text-4xl mb-2"></i>
-          <p>No emails whitelisted yet. Add one above to get started.</p>
+          <i class="fas fa-users text-4xl mb-2"></i>
+          <p>No users found.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Authorized Emails -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h2 class="card-title text-lg">
+        Authorized Emails
+        <span class="badge badge-neutral"><%= @allowed_emails.size %></span>
+      </h2>
+      <p class="text-sm opacity-70">Only these email addresses can sign in via Google OAuth. Add an email here to invite a new user.</p>
+
+      <!-- Add email form -->
+      <div class="mt-2">
+        <%= form_with model: @allowed_email, url: admin_users_path, class: "flex items-end gap-3" do |f| %>
+          <div class="form-control flex-1">
+            <%= f.email_field :email, placeholder: "user@example.com", class: "input input-bordered input-sm w-full", required: true %>
+            <% if @allowed_email.errors[:email].any? %>
+              <label class="label">
+                <span class="label-text-alt text-error"><%= @allowed_email.errors[:email].first %></span>
+              </label>
+            <% end %>
+          </div>
+          <%= f.submit "Authorize Email", class: "btn btn-primary btn-sm" %>
+        <% end %>
+      </div>
+
+      <% if @allowed_emails.any? %>
+        <div class="overflow-x-auto mt-4">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Status</th>
+                <th>Added</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @allowed_emails.each do |allowed| %>
+                <% has_account = @users.any? { |u| u.email.downcase == allowed.email.downcase } %>
+                <tr class="hover">
+                  <td class="font-mono text-sm"><%= allowed.email %></td>
+                  <td>
+                    <% if has_account %>
+                      <span class="badge badge-sm badge-success gap-1"><i class="fas fa-check text-xs"></i> Signed in</span>
+                    <% else %>
+                      <span class="badge badge-sm badge-warning gap-1"><i class="fas fa-clock text-xs"></i> Pending</span>
+                    <% end %>
+                  </td>
+                  <td class="text-sm opacity-70"><%= allowed.created_at.strftime("%b %d, %Y") %></td>
+                  <td class="text-right">
+                    <%= button_to admin_user_path(allowed), method: :delete,
+                          class: "btn btn-ghost btn-xs text-error",
+                          form: { data: { turbo_confirm: "Remove access for #{allowed.email}?" } } do %>
+                      <i class="fas fa-trash-alt"></i> Remove
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% else %>
+        <div class="text-center py-6 opacity-50">
+          <p>No authorized emails yet. Add one above to invite a user.</p>
         </div>
       <% end %>
     </div>

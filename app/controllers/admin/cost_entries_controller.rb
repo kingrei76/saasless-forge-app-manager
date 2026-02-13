@@ -171,10 +171,11 @@ class Admin::CostEntriesController < Admin::BaseController
     # Add infrastructure costs
     @costs_by_app.each do |app, costs|
       next unless app
-      @unified_costs[app.id] ||= { app: app, infra_cost: 0, infra_projected: 0, api_cost: 0, api_calls: 0, services: [], clients: [] }
+      @unified_costs[app.id] ||= { app: app, infra_cost: 0, infra_projected: 0, api_cost: 0, api_calls: 0, services: [], render_services: [], clients: [] }
       @unified_costs[app.id][:infra_cost] = costs.sum(&:total_cost)
       @unified_costs[app.id][:infra_projected] = costs.sum(&:projected_monthly_cost)
       @unified_costs[app.id][:services] = costs
+      @unified_costs[app.id][:render_services] = app.render_services.active
       @unified_costs[app.id][:days_active] = costs.first&.days_active || 0
       @unified_costs[app.id][:days_in_period] = costs.first&.days_in_period || 30
       @unified_costs[app.id][:clients] = costs.map { |c| c.client&.name }.compact.uniq
@@ -184,7 +185,7 @@ class Admin::CostEntriesController < Admin::BaseController
     @api_costs_by_app.each do |app_id, data|
       app = App.includes(:clients).find_by(id: app_id)
       next unless app
-      @unified_costs[app_id] ||= { app: app, infra_cost: 0, infra_projected: 0, api_cost: 0, api_calls: 0, services: [], days_active: @days_into_cycle, days_in_period: @days_in_cycle, clients: [] }
+      @unified_costs[app_id] ||= { app: app, infra_cost: 0, infra_projected: 0, api_cost: 0, api_calls: 0, services: [], render_services: [], days_active: @days_into_cycle, days_in_period: @days_in_cycle, clients: [] }
       @unified_costs[app_id][:api_cost] = data.total_cost.to_f
       @unified_costs[app_id][:api_calls] = data.call_count.to_i
       @unified_costs[app_id][:clients] = app.clients.pluck(:name) if @unified_costs[app_id][:clients].blank?

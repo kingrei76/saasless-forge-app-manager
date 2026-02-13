@@ -1,5 +1,6 @@
 class Admin::UsersController < Admin::BaseController
   def index
+    @users = User.order(:name, :email)
     @allowed_emails = AllowedEmail.order(:email)
     @allowed_email = AllowedEmail.new
   end
@@ -7,8 +8,9 @@ class Admin::UsersController < Admin::BaseController
   def create
     @allowed_email = AllowedEmail.new(allowed_email_params)
     if @allowed_email.save
-      redirect_to admin_users_path, notice: "#{@allowed_email.email} added to whitelist."
+      redirect_to admin_users_path, notice: "#{@allowed_email.email} has been authorized."
     else
+      @users = User.order(:name, :email)
       @allowed_emails = AllowedEmail.order(:email)
       render :index, status: :unprocessable_entity
     end
@@ -17,7 +19,7 @@ class Admin::UsersController < Admin::BaseController
   def destroy
     allowed_email = AllowedEmail.find(params[:id])
     allowed_email.destroy
-    redirect_to admin_users_path, notice: "#{allowed_email.email} removed from whitelist."
+    redirect_to admin_users_path, notice: "#{allowed_email.email} has been removed."
   end
 
   def impersonate
