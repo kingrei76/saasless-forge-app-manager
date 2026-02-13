@@ -20,6 +20,9 @@ class Admin::AppsController < Admin::BaseController
                          .where("period_start >= ?", 6.months.ago.beginning_of_month)
                          .group("DATE_TRUNC('month', period_start)")
                          .sum(:amount)
+    @available_providers = ServiceProvider.active
+      .where.not(id: @app.app_service_configs.select(:service_provider_id))
+      .order(:name)
   end
 
   def update
@@ -54,7 +57,7 @@ class Admin::AppsController < Admin::BaseController
   end
 
   def app_params
-    permitted = params.require(:app).permit(:status, :included, :ai_api_key, :ai_api_provider, tags: [])
+    permitted = params.require(:app).permit(:status, :included, :ai_api_key, tags: [])
     # Don't overwrite API key with placeholder or empty value
     if permitted[:ai_api_key].blank? || permitted[:ai_api_key].to_s.start_with?("\u2022")
       permitted.delete(:ai_api_key)

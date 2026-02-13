@@ -152,9 +152,11 @@
   <div class="card-body">
     <div class="flex justify-between items-center">
       <h3 class="card-title text-base">Connected Services (<%= @app.app_service_configs.count %>)</h3>
-      <%= link_to admin_infrastructure_path(tab: "service_providers"), class: "btn btn-ghost btn-xs" do %>
-        <i class="fas fa-cog"></i> Manage Providers
-      <% end %>
+      <div class="flex gap-2">
+        <%= link_to admin_infrastructure_path(tab: "service_providers"), class: "btn btn-ghost btn-xs" do %>
+          <i class="fas fa-cog"></i> Manage Providers
+        <% end %>
+      </div>
     </div>
 
     <% if @app.app_service_configs.any? %>
@@ -168,6 +170,7 @@
               <th>Budget Limit</th>
               <th class="text-right">This Month</th>
               <th>Status</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -191,13 +194,84 @@
                 <td>
                   <span class="badge badge-<%= config.enabled? ? 'success' : 'ghost' %> badge-xs"><%= config.enabled? ? 'Enabled' : 'Disabled' %></span>
                 </td>
+                <td class="text-right">
+                  <div class="flex gap-1 justify-end">
+                    <%# Toggle enabled/disabled %>
+                    <%= form_with model: [:admin, @app, config], method: :patch, class: "inline" do |f| %>
+                      <%= f.hidden_field :enabled, value: !config.enabled? %>
+                      <%= f.submit config.enabled? ? "Disable" : "Enable",
+                          class: "btn btn-ghost btn-xs #{config.enabled? ? 'text-warning' : 'text-success'}" %>
+                    <% end %>
+                    <%# Edit budget (opens inline form) %>
+                    <button type="button" class="btn btn-ghost btn-xs" onclick="document.getElementById('edit-config-<%= config.id %>').classList.toggle('hidden')">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <%# Disconnect %>
+                    <%= button_to admin_app_app_service_config_path(@app, config),
+                        method: :delete,
+                        class: "btn btn-ghost btn-xs text-error",
+                        data: { turbo_confirm: "Disconnect #{config.service_provider.name}?" } do %>
+                      <i class="fas fa-unlink"></i>
+                    <% end %>
+                  </div>
+                </td>
+              </tr>
+              <%# Inline edit row %>
+              <tr id="edit-config-<%= config.id %>" class="hidden bg-base-200">
+                <td colspan="7">
+                  <%= form_with model: [:admin, @app, config], method: :patch, class: "flex gap-3 items-center py-1" do |f| %>
+                    <div class="form-control">
+                      <label class="label py-0"><span class="label-text text-xs">Budget Limit</span></label>
+                      <%= f.number_field :monthly_budget_limit, value: config.monthly_budget_limit, step: 0.01, min: 0,
+                          class: "input input-bordered input-xs w-28", placeholder: "No limit" %>
+                    </div>
+                    <div class="form-control">
+                      <label class="label py-0"><span class="label-text text-xs">External ID</span></label>
+                      <%= f.text_field :external_identifier, value: config.external_identifier,
+                          class: "input input-bordered input-xs w-40", placeholder: "Optional" %>
+                    </div>
+                    <%= f.submit "Save", class: "btn btn-primary btn-xs mt-4" %>
+                    <button type="button" class="btn btn-ghost btn-xs mt-4" onclick="document.getElementById('edit-config-<%= config.id %>').classList.add('hidden')">Cancel</button>
+                  <% end %>
+                </td>
               </tr>
             <% end %>
           </tbody>
         </table>
       </div>
     <% else %>
-      <p class="text-sm opacity-60 mt-2">No service providers connected to this app.</p>
+      <p class="text-sm opacity-60 mt-2">No service providers connected to this app yet.</p>
+    <% end %>
+
+    <%# Connect Provider form %>
+    <% if @available_providers.any? %>
+      <div class="divider text-xs opacity-50">Connect Provider</div>
+      <%= form_with model: AppServiceConfig.new, url: admin_app_app_service_configs_path(@app), method: :post, class: "flex gap-3 items-end flex-wrap" do |f| %>
+        <div class="form-control">
+          <label class="label py-0"><span class="label-text text-xs">Provider</span></label>
+          <%= f.select :service_provider_id,
+              @available_providers.map { |p| ["#{p.name} (#{p.category.upcase})", p.id] },
+              { prompt: "Select provider..." },
+              class: "select select-bordered select-sm" %>
+        </div>
+        <div class="form-control">
+          <label class="label py-0"><span class="label-text text-xs">Budget Limit</span></label>
+          <%= f.number_field :monthly_budget_limit, step: 0.01, min: 0,
+              class: "input input-bordered input-sm w-28", placeholder: "No limit" %>
+        </div>
+        <div class="form-control">
+          <label class="label py-0"><span class="label-text text-xs">External ID</span></label>
+          <%= f.text_field :external_identifier,
+              class: "input input-bordered input-sm w-40", placeholder: "Optional" %>
+        </div>
+        <%= f.submit "Connect", class: "btn btn-primary btn-sm" %>
+      <% end %>
+    <% elsif @app.app_service_configs.empty? %>
+      <div class="mt-3">
+        <%= link_to admin_infrastructure_path(tab: "service_providers"), class: "btn btn-sm btn-outline" do %>
+          <i class="fas fa-plus mr-1"></i> Create a Provider First
+        <% end %>
+      </div>
     <% end %>
   </div>
 </div>
@@ -223,96 +297,119 @@
 </div>
 <% end %>
 
-<%# AI Settings %>
+<%# Gateway API Key %>
 <div class="card bg-base-100 shadow mb-6">
   <div class="card-body">
-    <h3 class="card-title text-base">AI Settings</h3>
-    <%= form_with model: [:admin, @app], class: "space-y-4" do |f| %>
-      <div class="form-control">
-        <label class="label"><span class="label-text">AI Provider</span></label>
-        <%= f.select :ai_api_provider,
-            [["None", ""], ["Grok (xAI)", "grok"], ["OpenAI", "openai"], ["Anthropic (Claude)", "anthropic"]],
-            {},
-            class: "select select-bordered select-sm w-48" %>
-      </div>
+    <h3 class="card-title text-base">Gateway API Key</h3>
+    <p class="text-sm opacity-70">This key authenticates the app with the AI Gateway proxy. All connected providers above are accessible through a single endpoint.</p>
+
+    <%= form_with model: [:admin, @app], class: "space-y-4 mt-2" do |f| %>
       <div class="form-control">
         <label class="label"><span class="label-text">API Key</span></label>
-        <%= f.password_field :ai_api_key,
-            value: @app.ai_api_key.present? ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "",
-            class: "input input-bordered input-sm w-full max-w-md",
-            placeholder: "Enter API key..." %>
+        <div class="flex gap-2">
+          <%= f.password_field :ai_api_key,
+              value: @app.ai_api_key.present? ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "",
+              class: "input input-bordered input-sm w-full max-w-md",
+              placeholder: "Enter or auto-generate a gateway key..." %>
+          <% unless @app.ai_api_key.present? %>
+            <button type="button" class="btn btn-outline btn-sm" onclick="generateKey(this)">
+              <i class="fas fa-key mr-1"></i> Auto-generate
+            </button>
+          <% end %>
+        </div>
         <label class="label">
-          <span class="label-text-alt">Costs for API calls using this key will be tracked to this app.</span>
+          <span class="label-text-alt">Client apps use this key to authenticate with the gateway proxy.</span>
         </label>
       </div>
       <div class="flex gap-2">
-        <%= f.submit "Save AI Settings", class: "btn btn-primary btn-sm" %>
+        <%= f.submit "Save Key", class: "btn btn-primary btn-sm" %>
       </div>
     <% end %>
 
     <% if @app.ai_api_key.present? %>
       <div class="divider"></div>
       <div class="space-y-3">
-        <h4 class="font-semibold text-sm">Integration Instructions</h4>
-        <p class="text-sm opacity-70">After each AI API call in your app, report usage to track costs:</p>
+        <h4 class="font-semibold text-sm">Gateway Proxy Integration</h4>
+        <p class="text-sm opacity-70">Point your app at the gateway proxy endpoint. It's OpenAI-compatible — just change the base URL and API key:</p>
 
         <div class="mockup-code text-xs">
-          <pre data-prefix="$"><code>curl -X POST <%= request.base_url %>/api/ai_usage \</code></pre>
+          <pre data-prefix="$"><code>curl -X POST <%= request.base_url %>/api/ai/v1/chat/completions \</code></pre>
           <pre data-prefix=""><code>  -H "Content-Type: application/json" \</code></pre>
+          <pre data-prefix=""><code>  -H "Authorization: Bearer YOUR_GATEWAY_API_KEY" \</code></pre>
           <pre data-prefix=""><code>  -d '{</code></pre>
-          <pre data-prefix=""><code>    "api_key": "YOUR_AI_API_KEY",</code></pre>
-          <pre data-prefix=""><code>    "provider": "<%= @app.ai_api_provider || 'grok' %>",</code></pre>
           <pre data-prefix=""><code>    "model": "grok-3",</code></pre>
-          <pre data-prefix=""><code>    "operation": "chat_completion",</code></pre>
-          <pre data-prefix=""><code>    "input_tokens": 1500,</code></pre>
-          <pre data-prefix=""><code>    "output_tokens": 500</code></pre>
+          <pre data-prefix=""><code>    "messages": [</code></pre>
+          <pre data-prefix=""><code>      {"role": "user", "content": "Hello!"}  </code></pre>
+          <pre data-prefix=""><code>    ]</code></pre>
           <pre data-prefix=""><code>  }'</code></pre>
         </div>
 
         <details class="collapse collapse-arrow bg-base-200">
-          <summary class="collapse-title text-sm font-medium">Python Example</summary>
+          <summary class="collapse-title text-sm font-medium">Python (OpenAI SDK)</summary>
           <div class="collapse-content">
-            <pre class="text-xs overflow-x-auto"><code>import requests
-import os
+            <pre class="text-xs overflow-x-auto"><code>from openai import OpenAI
 
-def report_ai_usage(input_tokens, output_tokens, model="grok-3", operation="chat"):
-    requests.post(
-        "<%= request.base_url %>/api/ai_usage",
-        json={
-            "api_key": os.environ["AI_API_KEY"],
-            "provider": "<%= @app.ai_api_provider || 'grok' %>",
-            "model": model,
-            "operation": operation,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens
-        }
-    )</code></pre>
+client = OpenAI(
+    api_key="YOUR_GATEWAY_API_KEY",
+    base_url="<%= request.base_url %>/api/ai/v1"
+)
+
+response = client.chat.completions.create(
+    model="grok-3",
+    messages=[{"role": "user", "content": "Hello!"}]
+)</code></pre>
           </div>
         </details>
 
         <details class="collapse collapse-arrow bg-base-200">
-          <summary class="collapse-title text-sm font-medium">JavaScript/Node Example</summary>
+          <summary class="collapse-title text-sm font-medium">JavaScript/Node (OpenAI SDK)</summary>
           <div class="collapse-content">
-            <pre class="text-xs overflow-x-auto"><code>async function reportAiUsage(inputTokens, outputTokens, model = "grok-3") {
-  await fetch("<%= request.base_url %>/api/ai_usage", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      api_key: process.env.AI_API_KEY,
-      provider: "<%= @app.ai_api_provider || 'grok' %>",
-      model,
-      operation: "chat_completion",
-      input_tokens: inputTokens,
-      output_tokens: outputTokens
-    })
-  });
-}</code></pre>
+            <pre class="text-xs overflow-x-auto"><code>import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: "YOUR_GATEWAY_API_KEY",
+  baseURL: "<%= request.base_url %>/api/ai/v1"
+});
+
+const response = await client.chat.completions.create({
+  model: "grok-3",
+  messages: [{ role: "user", content: "Hello!" }]
+});</code></pre>
+          </div>
+        </details>
+
+        <details class="collapse collapse-arrow bg-base-200">
+          <summary class="collapse-title text-sm font-medium">Legacy: Direct Usage Reporting</summary>
+          <div class="collapse-content">
+            <p class="text-xs opacity-70 mb-2">If your app calls AI providers directly (not through the gateway), you can still report usage for cost tracking:</p>
+            <pre class="text-xs overflow-x-auto"><code>curl -X POST <%= request.base_url %>/api/ai_usage \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "YOUR_GATEWAY_API_KEY",
+    "provider": "grok",
+    "model": "grok-3",
+    "operation": "chat_completion",
+    "input_tokens": 1500,
+    "output_tokens": 500
+  }'</code></pre>
           </div>
         </details>
       </div>
     <% end %>
   </div>
 </div>
+
+<script>
+  function generateKey(btn) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'sgw_';
+    for (let i = 0; i < 32; i++) key += chars.charAt(Math.floor(Math.random() * chars.length));
+    const input = btn.closest('.form-control').querySelector('input[type="password"]');
+    input.type = 'text';
+    input.value = key;
+    btn.remove();
+  }
+</script>
 
 <%# AI API Costs Section %>
 <div class="card bg-base-100 shadow mb-6">

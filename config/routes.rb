@@ -48,6 +48,7 @@ Rails.application.routes.draw do
       collection do
         post :sync
       end
+      resources :app_service_configs, only: [:create, :update, :destroy]
     end
 
     resources :clients do
