@@ -2,7 +2,7 @@
 <div class="flex justify-between items-center mb-4">
   <div>
     <h3 class="text-lg font-semibold">Service Providers</h3>
-    <p class="text-sm opacity-60">Manage API keys, pricing rules, and integrations for third-party services</p>
+    <p class="text-sm opacity-60">Register third-party APIs (AI, SMS, email, etc.) so apps can access them through the gateway</p>
   </div>
   <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-provider-modal').showModal()">
     <i class="fas fa-plus mr-1"></i> Add Provider
@@ -16,10 +16,10 @@
       <tr>
         <th>Name</th>
         <th>Category</th>
-        <th>Status</th>
-        <th>API Key</th>
-        <th>Features</th>
-        <th>Last Synced</th>
+        <th class="tooltip tooltip-bottom" data-tip="Active providers can be used by connected apps">Status</th>
+        <th class="tooltip tooltip-bottom" data-tip="The provider's API key, needed to forward requests">API Key</th>
+        <th class="tooltip tooltip-bottom" data-tip="Proxy: routes requests through the gateway. Sync: pulls usage data from the provider.">Features</th>
+        <th class="tooltip tooltip-bottom" data-tip="Last time usage data was pulled from this provider">Last Synced</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -52,10 +52,10 @@
           <td>
             <div class="flex gap-1">
               <% if provider.proxy_enabled? %>
-                <span class="badge badge-info badge-outline badge-xs">Proxy</span>
+                <span class="badge badge-info badge-outline badge-xs tooltip" data-tip="Apps can send API requests through the gateway proxy">Proxy</span>
               <% end %>
               <% if provider.sync_enabled? %>
-                <span class="badge badge-secondary badge-outline badge-xs">Sync</span>
+                <span class="badge badge-secondary badge-outline badge-xs tooltip" data-tip="Usage data is periodically pulled from the provider">Sync</span>
               <% end %>
             </div>
           </td>
@@ -144,15 +144,15 @@
               </div>
 
               <div class="flex gap-4">
-                <label class="label cursor-pointer gap-2">
+                <label class="label cursor-pointer gap-2 tooltip" data-tip="Allow apps to route API requests through the gateway to this provider">
                   <%= f.check_box :proxy_enabled, class: "checkbox checkbox-sm" %>
                   <span class="label-text">Proxy Enabled</span>
                 </label>
-                <label class="label cursor-pointer gap-2">
+                <label class="label cursor-pointer gap-2 tooltip" data-tip="Periodically pull usage data from this provider for cost tracking">
                   <%= f.check_box :sync_enabled, class: "checkbox checkbox-sm" %>
                   <span class="label-text">Sync Enabled</span>
                 </label>
-                <label class="label cursor-pointer gap-2">
+                <label class="label cursor-pointer gap-2 tooltip" data-tip="Inactive providers cannot be used by any app">
                   <%= f.check_box :active, class: "checkbox checkbox-sm" %>
                   <span class="label-text">Active</span>
                 </label>
@@ -184,14 +184,15 @@
   <div class="card bg-base-100 shadow mt-6">
     <div class="card-body">
       <h4 class="card-title text-base">Connected Apps</h4>
+      <p class="text-sm opacity-60 -mt-1 mb-2">Apps that are linked to providers. Manage these connections on each app's detail page.</p>
       <div class="overflow-x-auto">
         <table class="table table-sm">
           <thead>
             <tr>
               <th>Provider</th>
               <th>App</th>
-              <th>External ID</th>
-              <th>Budget Limit</th>
+              <th class="tooltip tooltip-bottom" data-tip="The app's identifier in the provider's system (for usage sync matching)">External ID</th>
+              <th class="tooltip tooltip-bottom" data-tip="Monthly spending cap — requests are blocked if the limit is reached">Budget Limit</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -226,60 +227,86 @@
 <dialog id="add-provider-modal" class="modal">
   <div class="modal-box max-w-2xl">
     <h3 class="font-bold text-lg mb-4">Add Service Provider</h3>
+    <p class="text-sm opacity-60 mb-3">Register a third-party API so your apps can access it through the gateway. You'll connect specific apps to this provider on each app's detail page.</p>
     <%= form_with model: ServiceProvider.new, url: admin_infrastructure_service_providers_path, method: :post, class: "space-y-4" do |f| %>
       <div class="grid grid-cols-2 gap-4">
         <div class="form-control">
-          <label class="label"><span class="label-text">Name</span></label>
+          <label class="label">
+            <span class="label-text">Name</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="Display name shown in the UI"><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.text_field :name, class: "input input-bordered input-sm", required: true, placeholder: "e.g. xAI / Grok" %>
         </div>
         <div class="form-control">
-          <label class="label"><span class="label-text">Slug</span></label>
+          <label class="label">
+            <span class="label-text">Slug</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="Unique identifier used in API calls and model routing (e.g. 'grok', 'openai')"><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.text_field :slug, class: "input input-bordered input-sm font-mono", required: true, placeholder: "e.g. grok" %>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div class="form-control">
-          <label class="label"><span class="label-text">Category</span></label>
+          <label class="label">
+            <span class="label-text">Category</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="Type of service: LLM, image generation, SMS, email, etc."><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.select :category, ServiceProvider::CATEGORIES.map { |c| [c.upcase, c] }, {}, class: "select select-bordered select-sm" %>
         </div>
         <div class="form-control">
-          <label class="label"><span class="label-text">Base URL</span></label>
+          <label class="label">
+            <span class="label-text">Base URL</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="The provider's API endpoint. Proxy requests are forwarded here."><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.text_field :base_url, class: "input input-bordered input-sm", placeholder: "https://api.example.com/v1" %>
         </div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div class="form-control">
-          <label class="label"><span class="label-text">API Key</span></label>
+          <label class="label">
+            <span class="label-text">API Key</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="Your secret key for authenticating with the provider's API"><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.password_field :api_key, class: "input input-bordered input-sm", placeholder: "Enter API key..." %>
         </div>
         <div class="form-control">
-          <label class="label"><span class="label-text">Usage API Key (if different)</span></label>
+          <label class="label">
+            <span class="label-text">Usage API Key</span>
+            <span class="label-text-alt tooltip tooltip-left" data-tip="Only needed if the provider uses a separate key for usage/billing APIs"><i class="fas fa-question-circle opacity-40"></i></span>
+          </label>
           <%= f.password_field :usage_api_key, class: "input input-bordered input-sm", placeholder: "Optional..." %>
         </div>
       </div>
 
       <div class="form-control">
-        <label class="label"><span class="label-text">Sync Adapter Class</span></label>
+        <label class="label">
+          <span class="label-text">Sync Adapter Class</span>
+          <span class="label-text-alt tooltip tooltip-left" data-tip="Ruby class that fetches usage data from this provider (e.g. UsageSyncAdapters::OpenAi). Leave blank if not syncing."><i class="fas fa-question-circle opacity-40"></i></span>
+        </label>
         <%= f.text_field :sync_adapter, class: "input input-bordered input-sm font-mono", placeholder: "UsageSyncAdapters::ClassName" %>
       </div>
 
       <div class="form-control">
-        <label class="label"><span class="label-text">Pricing Rules (JSON)</span></label>
+        <label class="label">
+          <span class="label-text">Pricing Rules (JSON)</span>
+          <span class="label-text-alt tooltip tooltip-left" data-tip="Defines how costs are calculated. Used for per-token, per-unit, or tiered pricing."><i class="fas fa-question-circle opacity-40"></i></span>
+        </label>
         <textarea name="service_provider[pricing_rules]" class="textarea textarea-bordered font-mono text-xs h-32" placeholder='{"type": "per_token", "models": {"model-name": {"input": 3.00, "output": 15.00}}}'></textarea>
+        <label class="label"><span class="label-text-alt">Prices are per 1M tokens. Example: <code>{"input": 3.00, "output": 15.00}</code> = $3/1M input, $15/1M output.</span></label>
       </div>
 
       <div class="flex gap-4">
-        <label class="label cursor-pointer gap-2">
+        <label class="label cursor-pointer gap-2 tooltip" data-tip="Allow apps to route API requests through the gateway to this provider">
           <%= f.check_box :proxy_enabled, class: "checkbox checkbox-sm" %>
           <span class="label-text">Proxy Enabled</span>
         </label>
-        <label class="label cursor-pointer gap-2">
+        <label class="label cursor-pointer gap-2 tooltip" data-tip="Periodically pull usage data from this provider for cost tracking">
           <%= f.check_box :sync_enabled, class: "checkbox checkbox-sm" %>
           <span class="label-text">Sync Enabled</span>
         </label>
-        <label class="label cursor-pointer gap-2">
+        <label class="label cursor-pointer gap-2 tooltip" data-tip="Inactive providers cannot be used by any app">
           <%= f.check_box :active, class: "checkbox checkbox-sm", checked: true %>
           <span class="label-text">Active</span>
         </label>

@@ -5,6 +5,22 @@
   </div>
 </div>
 
+<%# Getting Started Guide — shown when no providers exist %>
+<% if @service_providers.empty? %>
+  <div class="alert alert-info mb-6 shadow-sm">
+    <i class="fas fa-info-circle text-lg"></i>
+    <div>
+      <h4 class="font-bold">Getting Started with the Service Gateway</h4>
+      <ol class="list-decimal list-inside text-sm mt-1 space-y-1">
+        <li><strong>Add a provider</strong> — click "Service Providers" then "Add Provider" to register an AI or third-party API (e.g. xAI/Grok, OpenAI).</li>
+        <li><strong>Connect apps</strong> — go to any App detail page and link providers under "Connected Services". Set optional budget limits.</li>
+        <li><strong>Generate a gateway key</strong> — on the App page, generate a Gateway API Key. Your app uses this single key to call any connected provider.</li>
+        <li><strong>Track usage</strong> — the "Usage & Costs" tab shows token consumption, API call counts, and estimated costs per app and provider.</li>
+      </ol>
+    </div>
+  </div>
+<% end %>
+
 <%# Combined Stats Cards %>
 <%= render "stats_cards" %>
 

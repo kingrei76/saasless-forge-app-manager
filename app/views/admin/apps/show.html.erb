@@ -151,7 +151,10 @@
 <div class="card bg-base-100 shadow mb-6">
   <div class="card-body">
     <div class="flex justify-between items-center">
-      <h3 class="card-title text-base">Connected Services (<%= @app.app_service_configs.count %>)</h3>
+      <h3 class="card-title text-base">
+        Connected Services (<%= @app.app_service_configs.count %>)
+        <span class="tooltip tooltip-right" data-tip="Providers this app can access through the gateway. Connect a provider below, then use the Gateway API Key to make requests."><i class="fas fa-question-circle text-sm opacity-40 font-normal"></i></span>
+      </h3>
       <div class="flex gap-2">
         <%= link_to admin_infrastructure_path(tab: "service_providers"), class: "btn btn-ghost btn-xs" do %>
           <i class="fas fa-cog"></i> Manage Providers
@@ -166,10 +169,10 @@
             <tr>
               <th>Provider</th>
               <th>Category</th>
-              <th>External ID</th>
-              <th>Budget Limit</th>
-              <th class="text-right">This Month</th>
-              <th>Status</th>
+              <th class="tooltip tooltip-bottom" data-tip="This app's identifier in the provider's system — used to match usage data during syncs">External ID</th>
+              <th class="tooltip tooltip-bottom" data-tip="Monthly spending cap. Requests are blocked once this limit is reached.">Budget Limit</th>
+              <th class="text-right tooltip tooltip-bottom" data-tip="Estimated API cost for the current billing month">This Month</th>
+              <th class="tooltip tooltip-bottom" data-tip="Disabled providers won't accept gateway requests for this app">Status</th>
               <th class="text-right">Actions</th>
             </tr>
           </thead>
@@ -246,6 +249,7 @@
     <%# Connect Provider form %>
     <% if @available_providers.any? %>
       <div class="divider text-xs opacity-50">Connect Provider</div>
+      <p class="text-xs opacity-50 mb-2">Link a provider so this app can send API requests through the gateway.</p>
       <%= form_with model: AppServiceConfig.new, url: admin_app_app_service_configs_path(@app), method: :post, class: "flex gap-3 items-end flex-wrap" do |f| %>
         <div class="form-control">
           <label class="label py-0"><span class="label-text text-xs">Provider</span></label>
@@ -255,12 +259,18 @@
               class: "select select-bordered select-sm" %>
         </div>
         <div class="form-control">
-          <label class="label py-0"><span class="label-text text-xs">Budget Limit</span></label>
+          <label class="label py-0">
+            <span class="label-text text-xs">Budget Limit</span>
+            <span class="label-text-alt tooltip tooltip-top" data-tip="Max monthly spend before requests are blocked. Leave blank for unlimited."><i class="fas fa-question-circle opacity-40 text-xs"></i></span>
+          </label>
           <%= f.number_field :monthly_budget_limit, step: 0.01, min: 0,
               class: "input input-bordered input-sm w-28", placeholder: "No limit" %>
         </div>
         <div class="form-control">
-          <label class="label py-0"><span class="label-text text-xs">External ID</span></label>
+          <label class="label py-0">
+            <span class="label-text text-xs">External ID</span>
+            <span class="label-text-alt tooltip tooltip-top" data-tip="The app's ID in the provider's system. Used during usage sync to match records."><i class="fas fa-question-circle opacity-40 text-xs"></i></span>
+          </label>
           <%= f.text_field :external_identifier,
               class: "input input-bordered input-sm w-40", placeholder: "Optional" %>
         </div>
@@ -300,8 +310,11 @@
 <%# Gateway API Key %>
 <div class="card bg-base-100 shadow mb-6">
   <div class="card-body">
-    <h3 class="card-title text-base">Gateway API Key</h3>
-    <p class="text-sm opacity-70">This key authenticates the app with the AI Gateway proxy. All connected providers above are accessible through a single endpoint.</p>
+    <h3 class="card-title text-base">
+      Gateway API Key
+      <span class="tooltip tooltip-right" data-tip="A single API key that lets this app access all its connected providers through one unified endpoint"><i class="fas fa-question-circle text-sm opacity-40 font-normal"></i></span>
+    </h3>
+    <p class="text-sm opacity-70">This key authenticates the app with the AI Gateway proxy. Your app sends requests to a single endpoint, and the gateway routes them to the correct provider based on the model name.</p>
 
     <%= form_with model: [:admin, @app], class: "space-y-4 mt-2" do |f| %>
       <div class="form-control">
@@ -330,7 +343,16 @@
       <div class="divider"></div>
       <div class="space-y-3">
         <h4 class="font-semibold text-sm">Gateway Proxy Integration</h4>
-        <p class="text-sm opacity-70">Point your app at the gateway proxy endpoint. It's OpenAI-compatible — just change the base URL and API key:</p>
+        <p class="text-sm opacity-70">Point your app at the gateway proxy endpoint. It's OpenAI-compatible — just change the base URL and API key.</p>
+        <div class="bg-base-200 rounded-lg p-3 text-xs space-y-1">
+          <p class="font-semibold">How it works:</p>
+          <ol class="list-decimal list-inside space-y-0.5 opacity-80">
+            <li>Your app sends a request to <code class="bg-base-300 px-1 rounded"><%= request.base_url %>/api/ai/v1/chat/completions</code></li>
+            <li>The gateway identifies the provider from the <code class="bg-base-300 px-1 rounded">model</code> name (e.g. <code>grok-3</code> routes to xAI, <code>gpt-4o</code> to OpenAI)</li>
+            <li>It verifies the app is connected to that provider and within budget</li>
+            <li>The request is forwarded to the provider, the response is returned, and usage is logged</li>
+          </ol>
+        </div>
 
         <div class="mockup-code text-xs">
           <pre data-prefix="$"><code>curl -X POST <%= request.base_url %>/api/ai/v1/chat/completions \</code></pre>
@@ -415,7 +437,10 @@ const response = await client.chat.completions.create({
 <div class="card bg-base-100 shadow mb-6">
   <div class="card-body">
     <div class="flex justify-between items-center">
-      <h3 class="card-title text-base">AI API Costs</h3>
+      <h3 class="card-title text-base">
+        AI API Costs
+        <span class="tooltip tooltip-right" data-tip="Estimated costs from gateway proxy usage and synced provider data"><i class="fas fa-question-circle text-sm opacity-40 font-normal"></i></span>
+      </h3>
       <%= link_to admin_infrastructure_path(tab: "ai_apis", app_id: @app.id), class: "btn btn-ghost btn-sm" do %>
         <i class="fas fa-chart-line"></i> View Details
       <% end %>
