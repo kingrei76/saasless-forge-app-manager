@@ -71,7 +71,7 @@ class RenderCostCalculator
       # Calculate costs
       base_cost = monthly_price * prorated_multiplier
       bandwidth_cost = calculate_bandwidth_cost(app, billing_start, billing_end)
-      storage_cost = calculate_storage_cost(app, billing_start, billing_end)
+      storage_cost = calculate_storage_cost(render_service, prorated_multiplier)
       total_cost = base_cost + bandwidth_cost + storage_cost
 
       # Calculate projected monthly cost
@@ -79,7 +79,7 @@ class RenderCostCalculator
         daily_rate = total_cost / days_active
         projected_monthly = daily_rate * 30
       else
-        projected_monthly = monthly_price
+        projected_monthly = monthly_price + render_service.disk_monthly_cost
       end
 
       # Store the calculated cost
@@ -126,7 +126,7 @@ class RenderCostCalculator
       # Calculate costs
       base_cost = monthly_price * prorated_multiplier
       bandwidth_cost = calculate_bandwidth_cost(app, billing_start, billing_end)
-      storage_cost = calculate_storage_cost(app, billing_start, billing_end)
+      storage_cost = calculate_storage_cost(nil, prorated_multiplier)
       total_cost = base_cost + bandwidth_cost + storage_cost
 
       # Calculate projected monthly cost
@@ -232,9 +232,10 @@ class RenderCostCalculator
     overage_gb * overage_rate
   end
 
-  def calculate_storage_cost(app, billing_start, billing_end)
-    # For now, assume no storage overage
-    # This would need to be enhanced to track actual storage usage
-    0
+  def calculate_storage_cost(render_service, prorated_multiplier)
+    return 0 unless render_service.is_a?(RenderService)
+    disk_cost = render_service.disk_monthly_cost
+    return 0 if disk_cost <= 0
+    disk_cost * prorated_multiplier
   end
 end

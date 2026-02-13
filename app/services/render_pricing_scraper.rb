@@ -39,6 +39,7 @@ class RenderPricingScraper
 
   BANDWIDTH_OVERAGE_PER_GB = 0.10  # $0.10 per GB over included
   STORAGE_OVERAGE_PER_GB = 0.25   # $0.25 per GB over included
+  DISK_PRICE_PER_GB_MONTHLY = 0.30  # ~$0.0004/hr per GB disk storage
 
   def initialize
     @effective_from = Date.current

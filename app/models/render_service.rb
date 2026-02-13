@@ -39,6 +39,9 @@ class RenderService < ApplicationRecord
     "pro" => 85
   }.freeze
 
+  # Render disk pricing: ~$0.0004/hr per GB → ~$0.30/GB/month
+  DISK_PRICE_PER_GB_MONTHLY = 0.30
+
   SERVICE_TYPE_LABELS = {
     "web_service" => "Web Service",
     "private_service" => "Private Service",
@@ -61,6 +64,17 @@ class RenderService < ApplicationRecord
     else
       SERVICE_PLAN_PRICES[plan] || 0
     end
+  end
+
+  def disk_size_gb
+    return nil unless service_type == "postgres"
+    raw_data&.dig("disk", "sizeGB") || raw_data&.dig("diskSizeGB")
+  end
+
+  def disk_monthly_cost
+    size = disk_size_gb
+    return 0 unless size && size > 0
+    size * DISK_PRICE_PER_GB_MONTHLY
   end
 
   def service_type_label
