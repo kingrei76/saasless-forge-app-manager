@@ -35,6 +35,26 @@ clients = {
   "Chris Eberth" => { email: "", company: "Green leaf Landscaping", markup: "30.0", app: "greenleaf-bidding-tool" }
 }
 
+# Service Providers
+puts "Seeding service providers..."
+ServiceProvider.find_or_create_by!(slug: "grok") do |sp|
+  sp.name = "xAI / Grok"
+  sp.category = "llm"
+  sp.base_url = "https://api.x.ai/v1"
+  sp.proxy_enabled = true
+  sp.sync_enabled = false
+  sp.sync_adapter = "UsageSyncAdapters::Grok"
+  sp.pricing_rules = {
+    "type" => "per_token",
+    "models" => {
+      "grok-3"        => { "input" => 3.00, "output" => 15.00 },
+      "grok-2-latest" => { "input" => 2.00, "output" => 10.00 },
+      "grok-beta"     => { "input" => 5.00, "output" => 15.00 }
+    }
+  }
+end
+puts "Service providers seeded."
+
 clients.each do |name, data|
   client = Client.find_or_create_by!(name: name) do |c|
     c.email = data[:email]

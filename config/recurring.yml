@@ -5,6 +5,9 @@ production:
   recurring_billing:
     class: RecurringBillingJob
     schedule: every day at 7am
+  usage_sync:
+    class: UsageSyncJob
+    schedule: every day at 6am
 
 development:
   daily_sync:
@@ -13,3 +16,6 @@ development:
   recurring_billing:
     class: RecurringBillingJob
     schedule: every day at 7am
+  usage_sync:
+    class: UsageSyncJob
+    schedule: every day at 6am

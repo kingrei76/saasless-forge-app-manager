@@ -1,0 +1,295 @@
+<%# Service Providers Tab %>
+<div class="flex justify-between items-center mb-4">
+  <div>
+    <h3 class="text-lg font-semibold">Service Providers</h3>
+    <p class="text-sm opacity-60">Manage API keys, pricing rules, and integrations for third-party services</p>
+  </div>
+  <button class="btn btn-primary btn-sm" onclick="document.getElementById('add-provider-modal').showModal()">
+    <i class="fas fa-plus mr-1"></i> Add Provider
+  </button>
+</div>
+
+<%# Providers Table %>
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Status</th>
+        <th>API Key</th>
+        <th>Features</th>
+        <th>Last Synced</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @service_providers.each do |provider| %>
+        <tr>
+          <td>
+            <div>
+              <span class="font-medium"><%= provider.name %></span>
+              <p class="text-xs opacity-50 font-mono"><%= provider.slug %></p>
+            </div>
+          </td>
+          <td>
+            <span class="badge badge-<%= provider.category_badge_color %> badge-sm"><%= provider.category.upcase %></span>
+          </td>
+          <td>
+            <% if provider.active? %>
+              <span class="badge badge-success badge-sm gap-1"><i class="fas fa-check-circle"></i> Active</span>
+            <% else %>
+              <span class="badge badge-ghost badge-sm gap-1"><i class="fas fa-pause-circle"></i> Inactive</span>
+            <% end %>
+          </td>
+          <td>
+            <% if provider.api_key_configured? %>
+              <span class="badge badge-success badge-outline badge-sm">Configured</span>
+            <% else %>
+              <span class="badge badge-warning badge-outline badge-sm">Missing</span>
+            <% end %>
+          </td>
+          <td>
+            <div class="flex gap-1">
+              <% if provider.proxy_enabled? %>
+                <span class="badge badge-info badge-outline badge-xs">Proxy</span>
+              <% end %>
+              <% if provider.sync_enabled? %>
+                <span class="badge badge-secondary badge-outline badge-xs">Sync</span>
+              <% end %>
+            </div>
+          </td>
+          <td>
+            <% if provider.last_synced_at %>
+              <span class="text-sm"><%= time_ago_in_words(provider.last_synced_at) %> ago</span>
+            <% else %>
+              <span class="text-sm opacity-50">Never</span>
+            <% end %>
+          </td>
+          <td>
+            <div class="flex gap-1">
+              <button class="btn btn-ghost btn-xs" onclick="document.getElementById('edit-provider-<%= provider.id %>').showModal()">
+                <i class="fas fa-edit"></i>
+              </button>
+              <% if provider.sync_enabled? %>
+                <%= button_to sync_now_admin_infrastructure_service_provider_path(provider),
+                    method: :post,
+                    class: "btn btn-ghost btn-xs text-info",
+                    data: { turbo_confirm: "Queue sync for #{provider.name}?" } do %>
+                  <i class="fas fa-sync"></i>
+                <% end %>
+              <% end %>
+              <%= button_to admin_infrastructure_service_provider_path(provider),
+                  method: :delete,
+                  class: "btn btn-ghost btn-xs text-error",
+                  data: { turbo_confirm: "Delete #{provider.name}? This cannot be undone." } do %>
+                <i class="fas fa-trash"></i>
+              <% end %>
+            </div>
+          </td>
+        </tr>
+
+        <%# Edit Modal for each provider %>
+        <dialog id="edit-provider-<%= provider.id %>" class="modal">
+          <div class="modal-box max-w-2xl">
+            <h3 class="font-bold text-lg mb-4">Edit <%= provider.name %></h3>
+            <%= form_with model: provider, url: admin_infrastructure_service_provider_path(provider), method: :patch, class: "space-y-4" do |f| %>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Name</span></label>
+                  <%= f.text_field :name, class: "input input-bordered input-sm" %>
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Slug</span></label>
+                  <%= f.text_field :slug, class: "input input-bordered input-sm font-mono" %>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Category</span></label>
+                  <%= f.select :category, ServiceProvider::CATEGORIES.map { |c| [c.upcase, c] }, {}, class: "select select-bordered select-sm" %>
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Base URL</span></label>
+                  <%= f.text_field :base_url, class: "input input-bordered input-sm", placeholder: "https://api.example.com/v1" %>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="form-control">
+                  <label class="label"><span class="label-text">API Key</span></label>
+                  <%= f.password_field :api_key,
+                      value: provider.api_key.present? ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "",
+                      class: "input input-bordered input-sm",
+                      placeholder: "Enter API key..." %>
+                </div>
+                <div class="form-control">
+                  <label class="label"><span class="label-text">Usage API Key (if different)</span></label>
+                  <%= f.password_field :usage_api_key,
+                      value: provider.usage_api_key.present? ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" : "",
+                      class: "input input-bordered input-sm",
+                      placeholder: "Optional..." %>
+                </div>
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Sync Adapter Class</span></label>
+                <%= f.text_field :sync_adapter, class: "input input-bordered input-sm font-mono", placeholder: "UsageSyncAdapters::ClassName" %>
+              </div>
+
+              <div class="form-control">
+                <label class="label"><span class="label-text">Pricing Rules (JSON)</span></label>
+                <textarea name="service_provider[pricing_rules]" class="textarea textarea-bordered font-mono text-xs h-32"><%= JSON.pretty_generate(provider.pricing_rules) %></textarea>
+              </div>
+
+              <div class="flex gap-4">
+                <label class="label cursor-pointer gap-2">
+                  <%= f.check_box :proxy_enabled, class: "checkbox checkbox-sm" %>
+                  <span class="label-text">Proxy Enabled</span>
+                </label>
+                <label class="label cursor-pointer gap-2">
+                  <%= f.check_box :sync_enabled, class: "checkbox checkbox-sm" %>
+                  <span class="label-text">Sync Enabled</span>
+                </label>
+                <label class="label cursor-pointer gap-2">
+                  <%= f.check_box :active, class: "checkbox checkbox-sm" %>
+                  <span class="label-text">Active</span>
+                </label>
+              </div>
+
+              <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('dialog').close()">Cancel</button>
+                <%= f.submit "Save Changes", class: "btn btn-primary btn-sm" %>
+              </div>
+            <% end %>
+          </div>
+          <form method="dialog" class="modal-backdrop"><button>close</button></form>
+        </dialog>
+      <% end %>
+    </tbody>
+  </table>
+
+  <% if @service_providers.empty? %>
+    <div class="p-8 text-center opacity-60">
+      <i class="fas fa-plug text-4xl mb-2"></i>
+      <p>No service providers configured. Click "Add Provider" to get started.</p>
+    </div>
+  <% end %>
+</div>
+
+<%# Connected Apps Summary %>
+<% providers_with_apps = @service_providers.select { |p| p.app_service_configs.any? } %>
+<% if providers_with_apps.any? %>
+  <div class="card bg-base-100 shadow mt-6">
+    <div class="card-body">
+      <h4 class="card-title text-base">Connected Apps</h4>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>App</th>
+              <th>External ID</th>
+              <th>Budget Limit</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% providers_with_apps.each do |provider| %>
+              <% provider.app_service_configs.includes(:app).each do |config| %>
+                <tr>
+                  <td><span class="badge badge-<%= provider.category_badge_color %> badge-sm"><%= provider.name %></span></td>
+                  <td><%= link_to config.app.name, admin_app_path(config.app), class: "link link-primary" %></td>
+                  <td class="font-mono text-xs"><%= config.external_identifier || "—" %></td>
+                  <td>
+                    <% if config.monthly_budget_limit %>
+                      <%= number_to_currency(config.monthly_budget_limit) %>/mo
+                    <% else %>
+                      <span class="opacity-50">No limit</span>
+                    <% end %>
+                  </td>
+                  <td>
+                    <span class="badge badge-<%= config.enabled? ? 'success' : 'ghost' %> badge-xs"><%= config.enabled? ? 'Enabled' : 'Disabled' %></span>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%# Add Provider Modal %>
+<dialog id="add-provider-modal" class="modal">
+  <div class="modal-box max-w-2xl">
+    <h3 class="font-bold text-lg mb-4">Add Service Provider</h3>
+    <%= form_with model: ServiceProvider.new, url: admin_infrastructure_service_providers_path, method: :post, class: "space-y-4" do |f| %>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Name</span></label>
+          <%= f.text_field :name, class: "input input-bordered input-sm", required: true, placeholder: "e.g. xAI / Grok" %>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Slug</span></label>
+          <%= f.text_field :slug, class: "input input-bordered input-sm font-mono", required: true, placeholder: "e.g. grok" %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Category</span></label>
+          <%= f.select :category, ServiceProvider::CATEGORIES.map { |c| [c.upcase, c] }, {}, class: "select select-bordered select-sm" %>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Base URL</span></label>
+          <%= f.text_field :base_url, class: "input input-bordered input-sm", placeholder: "https://api.example.com/v1" %>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">API Key</span></label>
+          <%= f.password_field :api_key, class: "input input-bordered input-sm", placeholder: "Enter API key..." %>
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Usage API Key (if different)</span></label>
+          <%= f.password_field :usage_api_key, class: "input input-bordered input-sm", placeholder: "Optional..." %>
+        </div>
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">Sync Adapter Class</span></label>
+        <%= f.text_field :sync_adapter, class: "input input-bordered input-sm font-mono", placeholder: "UsageSyncAdapters::ClassName" %>
+      </div>
+
+      <div class="form-control">
+        <label class="label"><span class="label-text">Pricing Rules (JSON)</span></label>
+        <textarea name="service_provider[pricing_rules]" class="textarea textarea-bordered font-mono text-xs h-32" placeholder='{"type": "per_token", "models": {"model-name": {"input": 3.00, "output": 15.00}}}'></textarea>
+      </div>
+
+      <div class="flex gap-4">
+        <label class="label cursor-pointer gap-2">
+          <%= f.check_box :proxy_enabled, class: "checkbox checkbox-sm" %>
+          <span class="label-text">Proxy Enabled</span>
+        </label>
+        <label class="label cursor-pointer gap-2">
+          <%= f.check_box :sync_enabled, class: "checkbox checkbox-sm" %>
+          <span class="label-text">Sync Enabled</span>
+        </label>
+        <label class="label cursor-pointer gap-2">
+          <%= f.check_box :active, class: "checkbox checkbox-sm", checked: true %>
+          <span class="label-text">Active</span>
+        </label>
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('dialog').close()">Cancel</button>
+        <%= f.submit "Create Provider", class: "btn btn-primary btn-sm" %>
+      </div>
+    <% end %>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>

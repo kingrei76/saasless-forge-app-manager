@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_12_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -71,10 +71,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "app_id"
+    t.bigint "service_provider_id"
+    t.integer "quantity"
+    t.string "quantity_unit"
+    t.jsonb "metadata", default: {}
+    t.string "external_id"
     t.index ["app_id", "created_at"], name: "index_api_usage_logs_on_app_id_and_created_at"
     t.index ["app_id"], name: "index_api_usage_logs_on_app_id"
+    t.index ["external_id"], name: "index_api_usage_logs_on_external_id", unique: true, where: "(external_id IS NOT NULL)"
     t.index ["provider", "created_at"], name: "index_api_usage_logs_on_provider_and_created_at"
     t.index ["provider"], name: "index_api_usage_logs_on_provider"
+    t.index ["service_provider_id"], name: "index_api_usage_logs_on_service_provider_id"
     t.index ["trackable_type", "trackable_id"], name: "index_api_usage_logs_on_trackable"
   end
 
@@ -87,6 +94,20 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_000001) do
     t.index ["app_id", "client_id"], name: "index_app_assignments_on_app_id_and_client_id", unique: true
     t.index ["app_id"], name: "index_app_assignments_on_app_id"
     t.index ["client_id"], name: "index_app_assignments_on_client_id"
+  end
+
+  create_table "app_service_configs", force: :cascade do |t|
+    t.bigint "app_id", null: false
+    t.bigint "service_provider_id", null: false
+    t.boolean "enabled", default: true
+    t.decimal "monthly_budget_limit", precision: 10, scale: 2
+    t.string "external_identifier"
+    t.jsonb "config", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_id", "service_provider_id"], name: "idx_app_service_configs_unique", unique: true
+    t.index ["app_id"], name: "index_app_service_configs_on_app_id"
+    t.index ["service_provider_id"], name: "index_app_service_configs_on_service_provider_id"
   end
 
   create_table "apps", force: :cascade do |t|
@@ -423,6 +444,25 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_000001) do
     t.index ["render_owner_id"], name: "index_render_workspaces_on_render_owner_id", unique: true
   end
 
+  create_table "service_providers", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "category", null: false
+    t.string "base_url"
+    t.string "api_key"
+    t.string "usage_api_key"
+    t.jsonb "pricing_rules", default: {}
+    t.string "sync_adapter"
+    t.jsonb "sync_config", default: {}
+    t.boolean "proxy_enabled", default: false
+    t.boolean "sync_enabled", default: false
+    t.boolean "active", default: true
+    t.datetime "last_synced_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_service_providers_on_slug", unique: true
+  end
+
   create_table "settings", force: :cascade do |t|
     t.string "key", null: false
     t.text "value"
@@ -471,8 +511,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_000001) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "api_usage_logs", "apps"
+  add_foreign_key "api_usage_logs", "service_providers"
   add_foreign_key "app_assignments", "apps"
   add_foreign_key "app_assignments", "clients"
+  add_foreign_key "app_service_configs", "apps"
+  add_foreign_key "app_service_configs", "service_providers"
   add_foreign_key "apps", "github_accounts"
   add_foreign_key "audit_logs", "users"
   add_foreign_key "bid_apps", "apps"

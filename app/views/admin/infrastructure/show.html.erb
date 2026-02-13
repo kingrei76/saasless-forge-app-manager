@@ -1,7 +1,7 @@
 <div class="flex justify-between items-center mb-6">
   <div>
     <h2 class="text-2xl font-bold">Infrastructure</h2>
-    <p class="text-sm opacity-60">Manage hosting services and API integrations</p>
+    <p class="text-sm opacity-60">Manage service providers, hosting, and API integrations</p>
   </div>
 </div>
 
@@ -13,6 +13,13 @@
   <div class="tabs tabs-boxed bg-base-100 p-1 mb-6">
     <a href="#"
        data-toggle-target="tab"
+       data-tab="service_providers"
+       data-action="click->toggle#show"
+       class="tab <%= @tab == 'service_providers' ? 'tab-active' : '' %>">
+      <i class="fas fa-plug mr-2"></i> Service Providers
+    </a>
+    <a href="#"
+       data-toggle-target="tab"
        data-tab="render_services"
        data-action="click->toggle#show"
        class="tab <%= @tab == 'render_services' ? 'tab-active' : '' %>">
@@ -20,20 +27,25 @@
     </a>
     <a href="#"
        data-toggle-target="tab"
-       data-tab="ai_apis"
+       data-tab="usage"
        data-action="click->toggle#show"
-       class="tab <%= @tab == 'ai_apis' ? 'tab-active' : '' %>">
-      <i class="fas fa-brain mr-2"></i> AI APIs
+       class="tab <%= @tab == 'usage' ? 'tab-active' : '' %>">
+      <i class="fas fa-chart-line mr-2"></i> Usage & Costs
     </a>
   </div>
 
+  <%# Service Providers Tab %>
+  <div data-toggle-target="panel" data-panel="service_providers" class="<%= @tab != 'service_providers' ? 'hidden' : '' %>">
+    <%= render "service_providers_tab" %>
+  </div>
+
   <%# Render Services Tab %>
-  <div data-toggle-target="panel" data-panel="render_services" class="<%= @tab == 'ai_apis' ? 'hidden' : '' %>">
+  <div data-toggle-target="panel" data-panel="render_services" class="<%= @tab != 'render_services' ? 'hidden' : '' %>">
     <%= render "render_services_tab" %>
   </div>
 
-  <%# AI APIs Tab %>
-  <div data-toggle-target="panel" data-panel="ai_apis" class="<%= @tab == 'render_services' ? 'hidden' : '' %>">
-    <%= render "ai_apis_tab" %>
+  <%# Usage & Costs Tab %>
+  <div data-toggle-target="panel" data-panel="usage" class="<%= @tab != 'usage' ? 'hidden' : '' %>">
+    <%= render "usage_tab" %>
   </div>
 </div>

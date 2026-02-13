@@ -147,6 +147,61 @@
   </div>
 </div>
 
+<%# Connected Services %>
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <div class="flex justify-between items-center">
+      <h3 class="card-title text-base">Connected Services (<%= @app.app_service_configs.count %>)</h3>
+      <%= link_to admin_infrastructure_path(tab: "service_providers"), class: "btn btn-ghost btn-xs" do %>
+        <i class="fas fa-cog"></i> Manage Providers
+      <% end %>
+    </div>
+
+    <% if @app.app_service_configs.any? %>
+      <div class="overflow-x-auto mt-2">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Provider</th>
+              <th>Category</th>
+              <th>External ID</th>
+              <th>Budget Limit</th>
+              <th class="text-right">This Month</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @app.app_service_configs.includes(:service_provider).each do |config| %>
+              <tr>
+                <td class="font-medium"><%= config.service_provider.name %></td>
+                <td>
+                  <span class="badge badge-<%= config.service_provider.category_badge_color %> badge-xs"><%= config.service_provider.category.upcase %></span>
+                </td>
+                <td class="font-mono text-xs"><%= config.external_identifier || "—" %></td>
+                <td>
+                  <% if config.monthly_budget_limit %>
+                    <%= number_to_currency(config.monthly_budget_limit) %>/mo
+                  <% else %>
+                    <span class="opacity-50">No limit</span>
+                  <% end %>
+                </td>
+                <td class="text-right">
+                  <%= number_to_currency(@app.api_usage_logs.where(service_provider: config.service_provider).this_month.sum(:estimated_cost)) %>
+                </td>
+                <td>
+                  <span class="badge badge-<%= config.enabled? ? 'success' : 'ghost' %> badge-xs"><%= config.enabled? ? 'Enabled' : 'Disabled' %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-sm opacity-60 mt-2">No service providers connected to this app.</p>
+    <% end %>
+  </div>
+</div>
+
 <% if @cost_by_month.present? && @cost_by_month.values.any? { |v| v > 0 } %>
 <div class="card bg-base-100 shadow mb-6">
   <div class="card-body">

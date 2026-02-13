@@ -1,8 +1,9 @@
 class Admin::InfrastructureController < Admin::BaseController
   def show
-    @tab = params[:tab] || "render_services"
+    @tab = params[:tab] || "service_providers"
     @period = params[:period] || "this_month"
 
+    load_service_providers_data
     load_render_services_data
     load_api_usage_data
     load_combined_stats
@@ -11,7 +12,7 @@ class Admin::InfrastructureController < Admin::BaseController
   def assign_api_logs
     app = App.find(params[:app_id])
     count = ApiUsageLog.without_app.update_all(app_id: app.id)
-    redirect_to admin_infrastructure_path(tab: "ai_apis"),
+    redirect_to admin_infrastructure_path(tab: "usage"),
                 notice: "Assigned #{count} API usage logs to #{app.name}"
   end
 
@@ -19,7 +20,7 @@ class Admin::InfrastructureController < Admin::BaseController
     accounts_with_render = GithubAccount.with_render
 
     if accounts_with_render.empty?
-      redirect_to admin_infrastructure_path, alert: "No GitHub accounts have Render API keys configured. Please configure Render in GitHub Accounts."
+      redirect_to admin_infrastructure_path(tab: "render_services"), alert: "No GitHub accounts have Render API keys configured. Please configure Render in GitHub Accounts."
       return
     end
 
@@ -55,6 +56,11 @@ class Admin::InfrastructureController < Admin::BaseController
 
   private
 
+  def load_service_providers_data
+    @service_providers = ServiceProvider.order(:name)
+    @service_provider_count = ServiceProvider.active.count
+  end
+
   def load_render_services_data
     @render_services = RenderService.includes(:app, :render_workspace).order(:name)
 
@@ -85,7 +91,7 @@ class Admin::InfrastructureController < Admin::BaseController
   end
 
   def load_api_usage_data
-    base_scope = ApiUsageLog.grok
+    base_scope = ApiUsageLog.all
 
     @api_logs = case @period
     when "last_month"
@@ -94,6 +100,11 @@ class Admin::InfrastructureController < Admin::BaseController
       base_scope
     else # this_month
       base_scope.this_month
+    end
+
+    # Provider filter
+    if params[:provider_id].present?
+      @api_logs = @api_logs.where(service_provider_id: params[:provider_id])
     end
 
     # App filter
@@ -110,10 +121,11 @@ class Admin::InfrastructureController < Admin::BaseController
     @api_output_tokens = @api_logs.sum(:output_tokens)
 
     # For this month comparison in stats cards
-    @api_this_month_cost = ApiUsageLog.grok.this_month.sum(:estimated_cost)
+    @api_this_month_cost = ApiUsageLog.this_month.sum(:estimated_cost)
 
-    # Apps with API usage for filter dropdown
+    # Apps and providers with API usage for filter dropdowns
     @apps_with_api_usage = App.joins(:api_usage_logs).distinct.order(:name)
+    @providers_with_usage = ServiceProvider.joins(:api_usage_logs).distinct.order(:name)
   end
 
   def load_combined_stats

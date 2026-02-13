@@ -1,6 +1,7 @@
 class ApiUsageLog < ApplicationRecord
   belongs_to :trackable, polymorphic: true, optional: true
   belongs_to :app, optional: true
+  belongs_to :service_provider, optional: true
 
   validates :provider, presence: true
   validates :model, presence: true
@@ -11,8 +12,9 @@ class ApiUsageLog < ApplicationRecord
   scope :for_app, ->(app) { where(app: app) }
   scope :with_app, -> { where.not(app_id: nil) }
   scope :without_app, -> { where(app_id: nil) }
+  scope :for_provider, ->(provider) { where(service_provider: provider) }
 
-  # Grok pricing (per million tokens) - update as needed
+  # Grok pricing (per million tokens) — legacy fallback for records without service_provider
   GROK_PRICING = {
     "grok-3" => { input: 3.00, output: 15.00 },
     "grok-2-latest" => { input: 2.00, output: 10.00 },
@@ -20,10 +22,19 @@ class ApiUsageLog < ApplicationRecord
   }.freeze
 
   def calculate_cost!
-    pricing = GROK_PRICING[model] || GROK_PRICING["grok-3"]
-    input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
-    output_cost = (output_tokens.to_f / 1_000_000) * pricing[:output]
-    self.estimated_cost = input_cost + output_cost
+    if service_provider.present?
+      self.estimated_cost = service_provider.calculate_cost(
+        model: model,
+        input_tokens: input_tokens,
+        output_tokens: output_tokens,
+        quantity: quantity
+      )
+    else
+      pricing = GROK_PRICING[model] || GROK_PRICING["grok-3"]
+      input_cost = (input_tokens.to_f / 1_000_000) * pricing[:input]
+      output_cost = (output_tokens.to_f / 1_000_000) * pricing[:output]
+      self.estimated_cost = input_cost + output_cost
+    end
     save! if persisted?
     estimated_cost
   end

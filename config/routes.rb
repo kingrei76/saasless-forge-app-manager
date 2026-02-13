@@ -61,10 +61,15 @@ Rails.application.routes.draw do
     end
     resources :costs, only: [:index]
 
-    # Infrastructure (unified page for Render Services + AI APIs)
+    # Infrastructure (unified page for Render Services + Service Providers + Usage)
     resource :infrastructure, only: [:show], controller: "infrastructure" do
       post :sync_render
       post :assign_api_logs
+      resources :service_providers, only: [:create, :update, :destroy] do
+        member do
+          post :sync_now
+        end
+      end
     end
 
     # Keep render_services routes for link/unlink actions (used by turbo streams)
@@ -148,5 +153,11 @@ Rails.application.routes.draw do
   # API endpoints for external apps
   namespace :api do
     post "ai_usage", to: "ai_usage#create"
+
+    # AI Gateway proxy (OpenAI-compatible)
+    scope "ai/v1" do
+      post "chat/completions", to: "ai_proxy#chat_completions"
+      get  "models",           to: "ai_proxy#models"
+    end
   end
 end

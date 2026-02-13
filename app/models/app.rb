@@ -13,6 +13,8 @@ class App < ApplicationRecord
   has_many :calculated_costs, dependent: :destroy
   has_many :render_services, dependent: :nullify
   has_many :api_usage_logs, dependent: :nullify
+  has_many :app_service_configs, dependent: :destroy
+  has_many :service_providers, through: :app_service_configs
 
   validates :github_repo_id, uniqueness: true, allow_nil: true
   validates :render_service_id, uniqueness: true, allow_nil: true
