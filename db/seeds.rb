@@ -9,6 +9,10 @@ user = User.find_or_create_by!(email: "ammonlewis@gmail.com") do |user|
 end
 user.update!(admin: true, role: :admin) unless user.admin?
 
+# Whitelisted emails for Google OAuth login
+AllowedEmail.find_or_create_by!(email: "ammonlewis@gmail.com")
+puts "Allowed emails seeded."
+
 # Default settings
 Setting.find_or_create_by!(key: "default_markup_percentage") do |s|
   s.value = "30.0"
