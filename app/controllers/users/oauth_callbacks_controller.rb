@@ -13,6 +13,11 @@ class Users::OauthCallbacksController < ApplicationController
       return
     end
 
+    unless AllowedEmail.allowed?(user_info[:email])
+      redirect_to new_user_session_path, alert: "Your email is not authorized to sign in. Contact an administrator."
+      return
+    end
+
     user = User.find_or_create_from_oauth(**user_info)
     sign_in(user)
     redirect_to admin_root_path, notice: "Signed in with Google"

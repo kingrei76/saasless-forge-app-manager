@@ -1,4 +1,25 @@
 class Admin::UsersController < Admin::BaseController
+  def index
+    @allowed_emails = AllowedEmail.order(:email)
+    @allowed_email = AllowedEmail.new
+  end
+
+  def create
+    @allowed_email = AllowedEmail.new(allowed_email_params)
+    if @allowed_email.save
+      redirect_to admin_users_path, notice: "#{@allowed_email.email} added to whitelist."
+    else
+      @allowed_emails = AllowedEmail.order(:email)
+      render :index, status: :unprocessable_entity
+    end
+  end
+
+  def destroy
+    allowed_email = AllowedEmail.find(params[:id])
+    allowed_email.destroy
+    redirect_to admin_users_path, notice: "#{allowed_email.email} removed from whitelist."
+  end
+
   def impersonate
     user = User.find(params[:id])
     session[:admin_id] = current_user.id
@@ -6,11 +27,9 @@ class Admin::UsersController < Admin::BaseController
     redirect_to root_path, notice: "Now impersonating #{user.email}"
   end
 
-  def index
-    @users = if params[:q].present?
-      User.where("email ILIKE ?", "%#{params[:q]}%")
-    else
-      User.all
-    end
+  private
+
+  def allowed_email_params
+    params.require(:allowed_email).permit(:email)
   end
 end
