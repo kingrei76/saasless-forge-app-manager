@@ -80,7 +80,7 @@
           <tbody>
             <% @time_entries.each do |entry| %>
               <tr>
-                <td class="font-medium"><%= entry.entry_date.strftime("%b %d, %Y") %></td>
+                <td class="font-medium"><%= local_time(entry.entry_date) %></td>
                 <td><%= entry.hours %> hrs</td>
                 <td><span class="badge badge-outline badge-sm"><%= entry.work_category_label %></span></td>
                 <td class="max-w-xs truncate text-sm opacity-80"><%= entry.notes %></td>

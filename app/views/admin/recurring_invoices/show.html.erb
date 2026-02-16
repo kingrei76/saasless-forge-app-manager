@@ -2,7 +2,7 @@
   <div>
     <h2 class="text-2xl font-bold">Recurring Billing: <%= @recurring_invoice.client.name %></h2>
     <p class="text-sm opacity-60">
-      Created <%= @recurring_invoice.created_at.strftime("%b %d, %Y") %>
+      Created <%= local_time(@recurring_invoice.created_at) %>
     </p>
   </div>
   <div class="flex gap-2">
@@ -28,6 +28,16 @@
       <%= link_to edit_admin_recurring_invoice_path(@recurring_invoice), class: "btn btn-outline btn-sm" do %>
         <i class="fas fa-edit mr-1"></i> Edit
       <% end %>
+    <% end %>
+
+    <% if @recurring_invoice.client.stripe_subscription_id.blank? && @recurring_invoice.client.stripe_default_payment_method_id.present? %>
+      <%= button_to migrate_to_subscription_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-accent btn-sm", data: { turbo_confirm: "Migrate #{@recurring_invoice.client.name} to subscription billing? This creates a Stripe Subscription and pauses the old recurring invoice. The first automated invoice will be generated at the end of the billing cycle." } do %>
+        <i class="fas fa-sync-alt mr-1"></i> Migrate to Subscription
+      <% end %>
+    <% elsif @recurring_invoice.client.stripe_subscription_id.present? %>
+      <span class="badge badge-success gap-1">
+        <i class="fas fa-check-circle"></i> Subscription Active
+      </span>
     <% end %>
   </div>
 </div>
@@ -64,7 +74,7 @@
           <span class="opacity-60">Next Billing Date</span>
           <p class="font-medium">
             <% if @recurring_invoice.next_billing_date %>
-              <%= @recurring_invoice.next_billing_date.strftime("%B %d, %Y") %>
+              <%= local_time(@recurring_invoice.next_billing_date, "long-date") %>
               <% if @recurring_invoice.next_billing_date <= Date.current && @recurring_invoice.status == "active" %>
                 <span class="badge badge-warning badge-xs ml-1">Due</span>
               <% end %>
@@ -77,7 +87,7 @@
           <span class="opacity-60">Last Billed</span>
           <p class="font-medium">
             <% if @recurring_invoice.last_billed_date %>
-              <%= @recurring_invoice.last_billed_date.strftime("%B %d, %Y") %>
+              <%= local_time(@recurring_invoice.last_billed_date, "long-date") %>
             <% else %>
               Never
             <% end %>
@@ -180,7 +190,7 @@
                 <td><%= invoice.id %></td>
                 <td>
                   <% if invoice.period_start && invoice.period_end %>
-                    <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+                    <%= local_time(invoice.period_start, "month-day") %> - <%= local_time(invoice.period_end, "short-date") %>
                   <% else %>
                     --
                   <% end %>
@@ -198,7 +208,7 @@
                 </td>
                 <td>
                   <% if invoice.paid_at %>
-                    <%= invoice.paid_at.strftime("%b %d, %Y") %>
+                    <%= local_time(invoice.paid_at) %>
                   <% else %>
                     <span class="opacity-40">--</span>
                   <% end %>

@@ -111,7 +111,7 @@
                 <td>
                   <% if ri.next_billing_date %>
                     <span class="<%= ri.next_billing_date <= Date.current ? 'text-warning font-medium' : '' %>">
-                      <%= ri.next_billing_date.strftime("%b %d, %Y") %>
+                      <%= local_time(ri.next_billing_date) %>
                     </span>
                   <% else %>
                     <span class="opacity-40">--</span>
@@ -119,7 +119,7 @@
                 </td>
                 <td>
                   <% if ri.last_billed_date %>
-                    <%= ri.last_billed_date.strftime("%b %d, %Y") %>
+                    <%= local_time(ri.last_billed_date) %>
                   <% else %>
                     <span class="opacity-40">Never</span>
                   <% end %>
@@ -165,7 +165,7 @@
                   <td class="font-medium"><%= invoice.client.name %></td>
                   <td class="text-sm">
                     <% if invoice.period_start && invoice.period_end %>
-                      <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+                      <%= local_time(invoice.period_start, "month-day") %> - <%= local_time(invoice.period_end, "short-date") %>
                     <% else %>
                       —
                     <% end %>

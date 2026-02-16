@@ -117,3 +117,40 @@ The app includes a `Dockerfile` for containerized deployment. For Render:
 - `config/environments/production.rb` includes `RENDER_EXTERNAL_HOSTNAME` host allowlisting
 - `config/database.yml` production uses `DATABASE_URL`
 - Static files are served by Rails (`config.public_file_server.enabled = true`)
+
+---
+
+## Agent Framework: Tool Definitions
+
+The app includes an agent framework with tool definitions that let AI agents interact with app services.
+
+### Location
+
+Tool classes live in `app/services/agent_tools/` organized by category:
+
+```
+app/services/agent_tools/
+  base.rb                    # Abstract base class
+  stripe/                    # Stripe/billing tools (8 tools)
+  database/                  # Data query tools (4 tools)
+  infrastructure/            # Render hosting tools (2 tools)
+  app/                       # App-specific tools (3 tools)
+```
+
+### Adding New Tools
+
+1. Create a class inheriting `AgentTools::Base` in the appropriate subdirectory
+2. Implement class methods: `tool_name`, `tool_description`, `tool_category`, `tool_risk_level`, `tool_input_schema`
+3. Implement `#call(input_data)` with the tool's logic
+4. Run `rake tools:sync` to create/update the `ToolDefinition` database record
+5. Run `rake tools:attach_to_builder` to make it available to the builder agent
+
+### Auto-Discovery
+
+- **Boot-time sync**: In development, `ToolRegistryService.sync!` runs on every server restart (via `config/initializers/agent_framework.rb`)
+- **Daily job**: `ToolDiscoverySyncJob` runs at 4am — syncs tools, discovers new models, detects schema changes
+- **Schema fingerprinting**: Stored in `Setting[:tool_discovery_fingerprint]`; drift creates `AgentAlert` records
+
+### Timezone Display
+
+All dates/times in views use the `local_time(datetime, format_name)` helper (defined in `ApplicationHelper`) which renders `<time>` tags with a Stimulus controller (`local_time_controller.js`) for client-side timezone conversion. Do NOT use `.strftime()` in views — use `local_time()` instead.

@@ -47,6 +47,7 @@ class StripeInvoiceService
       )
     else
       @invoice.line_items.each do |li|
+        next if li.amount.to_f.zero? # Skip informational $0 lines
         Stripe::InvoiceItem.create(
           customer: @client.stripe_customer_id,
           invoice: stripe_invoice.id,

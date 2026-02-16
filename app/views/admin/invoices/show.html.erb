@@ -110,7 +110,7 @@
         <div>
           <span class="opacity-60">Due Date</span>
           <p class="font-medium <%= @invoice.due_date && @invoice.due_date < Date.current && @invoice.status != 'paid' ? 'text-error' : '' %>">
-            <%= @invoice.due_date ? @invoice.due_date.strftime("%b %d, %Y") : "—" %>
+            <%= local_time(@invoice.due_date) %>
             <% if @invoice.due_date && @invoice.due_date < Date.current && @invoice.status != "paid" %>
               <span class="badge badge-error badge-xs ml-1">Overdue</span>
             <% end %>
@@ -119,7 +119,7 @@
         <div>
           <span class="opacity-60">Paid At</span>
           <p class="font-medium text-success">
-            <%= @invoice.paid_at ? @invoice.paid_at.strftime("%b %d, %Y %l:%M %p") : "—" %>
+            <%= local_time(@invoice.paid_at, "short-datetime") %>
           </p>
         </div>
       </div>

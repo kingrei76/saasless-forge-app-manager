@@ -6,6 +6,7 @@ class Client < ApplicationRecord
   has_many :bids, dependent: :nullify
   has_many :calculated_costs, dependent: :destroy
   has_one :recurring_invoice, dependent: :destroy
+  has_many :pending_billing_items, dependent: :destroy
 
   COLLECTION_METHODS = %w[send_invoice charge_automatically].freeze
 

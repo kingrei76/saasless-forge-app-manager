@@ -68,7 +68,7 @@
         </div>
         <div>
           <span class="opacity-60">Next Billing</span>
-          <p class="font-medium"><%= @client.recurring_invoice.next_billing_date&.strftime("%b %d, %Y") || "Not scheduled" %></p>
+          <p class="font-medium"><%= @client.recurring_invoice.next_billing_date ? local_time(@client.recurring_invoice.next_billing_date) : "Not scheduled" %></p>
         </div>
       </div>
     <% else %>
@@ -76,6 +76,74 @@
     <% end %>
   </div>
 </div>
+
+<% if @client.has_stripe_subscription? && @pending_items %>
+<!-- Current Billing Cycle Usage -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <div class="flex justify-between items-center">
+      <h3 class="card-title text-base">Current Cycle Usage</h3>
+      <span class="badge badge-outline badge-sm">
+        <%= local_time(@billing_period[0], "month-day") %> - <%= local_time(@billing_period[1], "short-date") %>
+      </span>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mt-3">
+      <div class="stat bg-base-200 rounded-lg p-3">
+        <div class="stat-title text-xs">Internal Cost</div>
+        <div class="stat-value text-lg"><%= number_to_currency(@cycle_internal_total) %></div>
+      </div>
+      <div class="stat bg-base-200 rounded-lg p-3">
+        <div class="stat-title text-xs">Billed Amount</div>
+        <div class="stat-value text-lg text-primary"><%= number_to_currency(@cycle_total) %></div>
+      </div>
+      <div class="stat bg-base-200 rounded-lg p-3">
+        <div class="stat-title text-xs">Cycle Progress</div>
+        <div class="stat-value text-lg"><%= @client.billing_cycle_progress_percentage %>%</div>
+        <progress class="progress progress-primary w-full mt-1" value="<%= @client.billing_cycle_progress_percentage %>" max="100"></progress>
+      </div>
+    </div>
+
+    <% if @pending_items.any? %>
+      <div class="overflow-x-auto mt-4">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>App</th>
+              <th>Type</th>
+              <th>Internal Cost</th>
+              <th>Markup</th>
+              <th>Billed</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @pending_items.each do |item| %>
+              <tr>
+                <td class="font-medium">
+                  <% if item.app %>
+                    <%= link_to item.app.name, admin_app_path(item.app), class: "link link-primary" %>
+                  <% else %>
+                    --
+                  <% end %>
+                </td>
+                <td>
+                  <% badge = item.item_type == "infrastructure" ? "badge-info" : "badge-secondary" %>
+                  <span class="badge <%= badge %> badge-xs"><%= item.item_type.humanize %></span>
+                </td>
+                <td><%= number_to_currency(item.internal_cost) %></td>
+                <td><%= item.markup_percentage %>%</td>
+                <td class="font-medium"><%= number_to_currency(item.billed_amount) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-sm opacity-60 text-center py-4 mt-2">No usage recorded for this billing cycle yet.</p>
+    <% end %>
+  </div>
+</div>
+<% end %>
 
 <!-- Projects & Bids Summary -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -229,7 +297,7 @@
                     —
                   <% end %>
                 </td>
-                <td class="text-sm"><%= project.updated_at.strftime("%b %d, %Y") %></td>
+                <td class="text-sm"><%= local_time(project.updated_at) %></td>
                 <td>
                   <%= link_to admin_project_path(project), class: "btn btn-ghost btn-xs" do %>
                     <i class="fas fa-eye"></i>
@@ -311,7 +379,7 @@
                 <td><%= invoice.id %></td>
                 <td>
                   <% if invoice.period_start && invoice.period_end %>
-                    <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+                    <%= local_time(invoice.period_start, "month-day") %> - <%= local_time(invoice.period_end, "short-date") %>
                   <% else %>
                     —
                   <% end %>

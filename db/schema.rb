@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_16_100001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -50,6 +50,234 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "agent_alerts", force: :cascade do |t|
+    t.bigint "agent_id"
+    t.bigint "agent_execution_id"
+    t.bigint "agent_execution_step_id"
+    t.string "alert_type", null: false
+    t.string "severity", default: "info", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.string "status", default: "open", null: false
+    t.datetime "resolved_at"
+    t.bigint "resolved_by_id"
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_execution_id"], name: "index_agent_alerts_on_agent_execution_id"
+    t.index ["agent_execution_step_id"], name: "index_agent_alerts_on_agent_execution_step_id"
+    t.index ["agent_id"], name: "index_agent_alerts_on_agent_id"
+    t.index ["alert_type"], name: "index_agent_alerts_on_alert_type"
+    t.index ["resolved_by_id"], name: "index_agent_alerts_on_resolved_by_id"
+    t.index ["severity"], name: "index_agent_alerts_on_severity"
+    t.index ["status", "severity"], name: "index_agent_alerts_on_status_and_severity"
+    t.index ["status"], name: "index_agent_alerts_on_status"
+  end
+
+  create_table "agent_execution_steps", force: :cascade do |t|
+    t.bigint "agent_execution_id", null: false
+    t.integer "step_number", null: false
+    t.string "step_type", null: false
+    t.bigint "tool_definition_id"
+    t.bigint "target_agent_id"
+    t.jsonb "input_data", default: {}
+    t.jsonb "output_data", default: {}
+    t.string "status", default: "pending", null: false
+    t.text "error_message"
+    t.integer "duration_ms"
+    t.integer "tokens_used", default: 0
+    t.decimal "cost", precision: 10, scale: 6, default: "0.0"
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_execution_id", "step_number"], name: "idx_execution_steps_unique", unique: true
+    t.index ["agent_execution_id"], name: "index_agent_execution_steps_on_agent_execution_id"
+    t.index ["status"], name: "index_agent_execution_steps_on_status"
+    t.index ["step_type"], name: "index_agent_execution_steps_on_step_type"
+    t.index ["target_agent_id"], name: "index_agent_execution_steps_on_target_agent_id"
+    t.index ["tool_definition_id"], name: "index_agent_execution_steps_on_tool_definition_id"
+  end
+
+  create_table "agent_executions", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.bigint "parent_execution_id"
+    t.bigint "trigger_id"
+    t.string "status", default: "pending", null: false
+    t.string "mode", default: "test", null: false
+    t.jsonb "state", default: {}
+    t.jsonb "input_data", default: {}
+    t.jsonb "output_data", default: {}
+    t.text "error_message"
+    t.jsonb "error_details", default: {}
+    t.datetime "started_at"
+    t.datetime "completed_at"
+    t.integer "total_tokens", default: 0
+    t.decimal "total_cost", precision: 10, scale: 6, default: "0.0"
+    t.integer "iteration_count", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "builder_chat_session_id"
+    t.index ["agent_id", "created_at"], name: "index_agent_executions_on_agent_id_and_created_at"
+    t.index ["agent_id", "status"], name: "index_agent_executions_on_agent_id_and_status"
+    t.index ["agent_id"], name: "index_agent_executions_on_agent_id"
+    t.index ["builder_chat_session_id"], name: "index_agent_executions_on_builder_chat_session_id"
+    t.index ["mode"], name: "index_agent_executions_on_mode"
+    t.index ["parent_execution_id"], name: "index_agent_executions_on_parent_execution_id"
+    t.index ["status"], name: "index_agent_executions_on_status"
+    t.index ["trigger_id"], name: "index_agent_executions_on_trigger_id"
+  end
+
+  create_table "agent_goals", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.text "success_criteria"
+    t.integer "priority", default: 0
+    t.string "status", default: "active", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "status"], name: "index_agent_goals_on_agent_id_and_status"
+    t.index ["agent_id"], name: "index_agent_goals_on_agent_id"
+  end
+
+  create_table "agent_handoffs", force: :cascade do |t|
+    t.bigint "source_agent_id", null: false
+    t.bigint "target_agent_id", null: false
+    t.string "name"
+    t.text "description"
+    t.jsonb "condition", default: {}
+    t.integer "priority", default: 0
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source_agent_id", "target_agent_id"], name: "idx_agent_handoffs_unique", unique: true
+    t.index ["source_agent_id"], name: "index_agent_handoffs_on_source_agent_id"
+    t.index ["target_agent_id"], name: "index_agent_handoffs_on_target_agent_id"
+  end
+
+  create_table "agent_memories", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "memory_type", default: "fact", null: false
+    t.string "key"
+    t.text "content", null: false
+    t.jsonb "embedding", default: {}
+    t.decimal "relevance_score", precision: 5, scale: 4
+    t.jsonb "metadata", default: {}
+    t.datetime "expires_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "key"], name: "idx_agent_memories_key_unique", unique: true, where: "(key IS NOT NULL)"
+    t.index ["agent_id", "memory_type"], name: "index_agent_memories_on_agent_id_and_memory_type"
+    t.index ["agent_id"], name: "index_agent_memories_on_agent_id"
+    t.index ["expires_at"], name: "index_agent_memories_on_expires_at"
+  end
+
+  create_table "agent_tools", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.bigint "tool_definition_id", null: false
+    t.boolean "enabled", default: true, null: false
+    t.boolean "requires_approval", default: false, null: false
+    t.jsonb "config", default: {}
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "tool_definition_id"], name: "idx_agent_tools_unique", unique: true
+    t.index ["agent_id"], name: "index_agent_tools_on_agent_id"
+    t.index ["tool_definition_id"], name: "index_agent_tools_on_tool_definition_id"
+  end
+
+  create_table "agent_triggers", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.string "trigger_type", null: false
+    t.string "event_name"
+    t.bigint "depends_on_agent_id"
+    t.string "schedule"
+    t.jsonb "condition", default: {}
+    t.boolean "enabled", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "tool_definition_id"
+    t.integer "check_interval_minutes", default: 60
+    t.datetime "last_checked_at"
+    t.datetime "last_fired_at"
+    t.integer "cooldown_minutes", default: 0
+    t.string "webhook_token"
+    t.text "description"
+    t.jsonb "input_data_template", default: {}
+    t.index ["agent_id", "trigger_type"], name: "index_agent_triggers_on_agent_id_and_trigger_type"
+    t.index ["agent_id"], name: "index_agent_triggers_on_agent_id"
+    t.index ["depends_on_agent_id"], name: "index_agent_triggers_on_depends_on_agent_id"
+    t.index ["event_name"], name: "index_agent_triggers_on_event_name"
+    t.index ["tool_definition_id"], name: "index_agent_triggers_on_tool_definition_id"
+    t.index ["webhook_token"], name: "index_agent_triggers_on_webhook_token", unique: true
+  end
+
+  create_table "agent_versions", force: :cascade do |t|
+    t.bigint "agent_id", null: false
+    t.integer "version_number", null: false
+    t.text "system_prompt"
+    t.jsonb "config_snapshot", default: {}
+    t.text "change_summary"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id", "version_number"], name: "index_agent_versions_on_agent_id_and_version_number", unique: true
+    t.index ["agent_id"], name: "index_agent_versions_on_agent_id"
+    t.index ["created_by_id"], name: "index_agent_versions_on_created_by_id"
+  end
+
+  create_table "agents", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.text "system_prompt"
+    t.string "category", default: "custom", null: false
+    t.string "status", default: "draft", null: false
+    t.string "mode", default: "test", null: false
+    t.integer "version", default: 1, null: false
+    t.integer "max_iterations", default: 25
+    t.decimal "temperature", precision: 3, scale: 2, default: "0.7"
+    t.string "llm_model"
+    t.bigint "service_provider_id"
+    t.jsonb "config", default: {}
+    t.jsonb "memory_config", default: {}
+    t.jsonb "metadata", default: {}
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "ai_model_id"
+    t.index ["ai_model_id"], name: "index_agents_on_ai_model_id"
+    t.index ["category"], name: "index_agents_on_category"
+    t.index ["created_by_id"], name: "index_agents_on_created_by_id"
+    t.index ["mode"], name: "index_agents_on_mode"
+    t.index ["service_provider_id"], name: "index_agents_on_service_provider_id"
+    t.index ["slug"], name: "index_agents_on_slug", unique: true
+    t.index ["status"], name: "index_agents_on_status"
+  end
+
+  create_table "ai_models", force: :cascade do |t|
+    t.bigint "service_provider_id", null: false
+    t.string "name", null: false
+    t.string "model_id", null: false
+    t.string "category", default: "chat", null: false
+    t.integer "context_window"
+    t.integer "max_output_tokens"
+    t.decimal "input_price_per_million", precision: 10, scale: 4
+    t.decimal "output_price_per_million", precision: 10, scale: 4
+    t.jsonb "capabilities", default: {}
+    t.string "status", default: "active", null: false
+    t.integer "sort_order", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_ai_models_on_category"
+    t.index ["model_id"], name: "index_ai_models_on_model_id"
+    t.index ["service_provider_id", "model_id"], name: "index_ai_models_on_service_provider_id_and_model_id", unique: true
+    t.index ["service_provider_id"], name: "index_ai_models_on_service_provider_id"
+    t.index ["status"], name: "index_ai_models_on_status"
   end
 
   create_table "allowed_emails", force: :cascade do |t|
@@ -209,6 +437,22 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
     t.index ["project_id"], name: "index_bids_on_project_id"
   end
 
+  create_table "builder_chat_sessions", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.bigint "agent_id"
+    t.bigint "builder_agent_id", null: false
+    t.jsonb "conversation_memory", default: []
+    t.jsonb "context", default: {}
+    t.string "status", default: "active", null: false
+    t.datetime "last_message_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["agent_id"], name: "index_builder_chat_sessions_on_agent_id"
+    t.index ["builder_agent_id"], name: "index_builder_chat_sessions_on_builder_agent_id"
+    t.index ["user_id", "agent_id"], name: "idx_builder_chat_active_user_agent", unique: true, where: "((status)::text = 'active'::text)"
+    t.index ["user_id"], name: "index_builder_chat_sessions_on_user_id"
+  end
+
   create_table "calculated_costs", force: :cascade do |t|
     t.bigint "app_id", null: false
     t.bigint "client_id", null: false
@@ -329,6 +573,29 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
     t.index ["payment_type"], name: "index_invoices_on_payment_type"
     t.index ["project_id"], name: "index_invoices_on_project_id"
     t.index ["recurring_invoice_id"], name: "index_invoices_on_recurring_invoice_id"
+  end
+
+  create_table "pending_billing_items", force: :cascade do |t|
+    t.bigint "client_id", null: false
+    t.bigint "app_id"
+    t.string "stripe_invoice_item_id", null: false
+    t.string "item_type", null: false
+    t.string "description"
+    t.decimal "internal_cost", precision: 10, scale: 2
+    t.decimal "markup_percentage", precision: 5, scale: 2
+    t.decimal "billed_amount", precision: 10, scale: 2
+    t.date "period_start"
+    t.date "period_end"
+    t.string "billing_cycle_id"
+    t.string "status", default: "pending", null: false
+    t.string "stripe_invoice_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["app_id"], name: "index_pending_billing_items_on_app_id"
+    t.index ["client_id", "billing_cycle_id"], name: "index_pending_billing_items_on_client_id_and_billing_cycle_id"
+    t.index ["client_id"], name: "index_pending_billing_items_on_client_id"
+    t.index ["status"], name: "index_pending_billing_items_on_status"
+    t.index ["stripe_invoice_item_id"], name: "index_pending_billing_items_on_stripe_invoice_item_id", unique: true
   end
 
   create_table "project_apps", force: :cascade do |t|
@@ -486,6 +753,57 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
     t.index ["work_category"], name: "index_time_entries_on_work_category"
   end
 
+  create_table "tool_credentials", force: :cascade do |t|
+    t.bigint "tool_definition_id", null: false
+    t.string "name", null: false
+    t.string "credential_type", default: "api_key", null: false
+    t.text "encrypted_value"
+    t.jsonb "config", default: {}
+    t.datetime "expires_at"
+    t.string "status", default: "active", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status"], name: "index_tool_credentials_on_status"
+    t.index ["tool_definition_id", "name"], name: "idx_tool_credentials_unique", unique: true
+    t.index ["tool_definition_id"], name: "index_tool_credentials_on_tool_definition_id"
+  end
+
+  create_table "tool_definitions", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.text "description"
+    t.string "handler_class"
+    t.string "category", default: "other", null: false
+    t.jsonb "input_schema", default: {}
+    t.jsonb "output_schema", default: {}
+    t.integer "version", default: 1, null: false
+    t.string "risk_level", default: "low", null: false
+    t.string "status", default: "active", null: false
+    t.jsonb "config", default: {}
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_tool_definitions_on_category"
+    t.index ["risk_level"], name: "index_tool_definitions_on_risk_level"
+    t.index ["slug"], name: "index_tool_definitions_on_slug", unique: true
+    t.index ["status"], name: "index_tool_definitions_on_status"
+  end
+
+  create_table "tool_versions", force: :cascade do |t|
+    t.bigint "tool_definition_id", null: false
+    t.integer "version_number", null: false
+    t.text "description"
+    t.jsonb "input_schema", default: {}
+    t.jsonb "config_snapshot", default: {}
+    t.text "change_summary"
+    t.bigint "created_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_tool_versions_on_created_by_id"
+    t.index ["tool_definition_id", "version_number"], name: "idx_tool_versions_unique", unique: true
+    t.index ["tool_definition_id"], name: "index_tool_versions_on_tool_definition_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
@@ -510,6 +828,32 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "agent_alerts", "agent_execution_steps"
+  add_foreign_key "agent_alerts", "agent_executions"
+  add_foreign_key "agent_alerts", "agents"
+  add_foreign_key "agent_alerts", "users", column: "resolved_by_id"
+  add_foreign_key "agent_execution_steps", "agent_executions"
+  add_foreign_key "agent_execution_steps", "agents", column: "target_agent_id"
+  add_foreign_key "agent_execution_steps", "tool_definitions"
+  add_foreign_key "agent_executions", "agent_executions", column: "parent_execution_id"
+  add_foreign_key "agent_executions", "agent_triggers", column: "trigger_id"
+  add_foreign_key "agent_executions", "agents"
+  add_foreign_key "agent_executions", "builder_chat_sessions"
+  add_foreign_key "agent_goals", "agents"
+  add_foreign_key "agent_handoffs", "agents", column: "source_agent_id"
+  add_foreign_key "agent_handoffs", "agents", column: "target_agent_id"
+  add_foreign_key "agent_memories", "agents"
+  add_foreign_key "agent_tools", "agents"
+  add_foreign_key "agent_tools", "tool_definitions"
+  add_foreign_key "agent_triggers", "agents"
+  add_foreign_key "agent_triggers", "agents", column: "depends_on_agent_id"
+  add_foreign_key "agent_triggers", "tool_definitions"
+  add_foreign_key "agent_versions", "agents"
+  add_foreign_key "agent_versions", "users", column: "created_by_id"
+  add_foreign_key "agents", "ai_models"
+  add_foreign_key "agents", "service_providers"
+  add_foreign_key "agents", "users", column: "created_by_id"
+  add_foreign_key "ai_models", "service_providers"
   add_foreign_key "api_usage_logs", "apps"
   add_foreign_key "api_usage_logs", "service_providers"
   add_foreign_key "app_assignments", "apps"
@@ -524,6 +868,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
   add_foreign_key "bid_line_items", "bids"
   add_foreign_key "bids", "clients"
   add_foreign_key "bids", "projects"
+  add_foreign_key "builder_chat_sessions", "agents"
+  add_foreign_key "builder_chat_sessions", "agents", column: "builder_agent_id"
+  add_foreign_key "builder_chat_sessions", "users"
   add_foreign_key "calculated_costs", "apps"
   add_foreign_key "calculated_costs", "clients"
   add_foreign_key "cost_entries", "apps"
@@ -534,6 +881,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
   add_foreign_key "invoices", "clients"
   add_foreign_key "invoices", "projects"
   add_foreign_key "invoices", "recurring_invoices"
+  add_foreign_key "pending_billing_items", "apps"
+  add_foreign_key "pending_billing_items", "clients"
   add_foreign_key "project_apps", "apps"
   add_foreign_key "project_apps", "projects"
   add_foreign_key "projects", "clients"
@@ -543,4 +892,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_12_100001) do
   add_foreign_key "render_usage_metrics", "apps"
   add_foreign_key "time_entries", "projects"
   add_foreign_key "time_entries", "users"
+  add_foreign_key "tool_credentials", "tool_definitions"
+  add_foreign_key "tool_versions", "tool_definitions"
+  add_foreign_key "tool_versions", "users", column: "created_by_id"
 end

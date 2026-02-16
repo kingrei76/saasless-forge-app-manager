@@ -39,7 +39,7 @@
       <h3 class="card-title text-sm opacity-60">Period</h3>
       <p class="text-lg font-medium">
         <% if @invoice.period_start && @invoice.period_end %>
-          <%= @invoice.period_start.strftime("%b %d") %> - <%= @invoice.period_end.strftime("%b %d, %Y") %>
+          <%= local_time(@invoice.period_start, "month-day") %> - <%= local_time(@invoice.period_end, "short-date") %>
         <% elsif @invoice.project %>
           <%= @invoice.project.title %>
         <% else %>

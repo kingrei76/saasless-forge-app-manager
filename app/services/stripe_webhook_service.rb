@@ -9,6 +9,8 @@ class StripeWebhookService
     configure_stripe!
 
     case @type
+    when "invoice.created"
+      handle_invoice_created
     when "invoice.paid"
       handle_invoice_paid
     when "invoice.payment_failed"
@@ -22,9 +24,81 @@ class StripeWebhookService
     else
       Rails.logger.info("StripeWebhookService: Unhandled event type #{@type}")
     end
+
+    fire_agent_trigger!
   end
 
   private
+
+  def handle_invoice_created
+    # Only handle subscription-generated invoices (not manually created ones)
+    return unless @data.subscription.present?
+
+    # Skip if we already have a local invoice for this Stripe invoice
+    return if Invoice.exists?(stripe_invoice_id: @data.id)
+
+    client = Client.find_by(stripe_customer_id: @data.customer)
+    return unless client
+
+    # Determine billing period from the Stripe invoice
+    period_start = @data.period_start ? Time.at(@data.period_start).to_date : Date.current.beginning_of_month
+    period_end = @data.period_end ? Time.at(@data.period_end).to_date : Date.current.end_of_month
+    cycle_id = period_start.strftime("%Y-%m")
+
+    pending_items = client.pending_billing_items.pending.for_cycle(cycle_id)
+
+    # Skip if no pending items (the $0 anchor invoice with no usage)
+    if pending_items.empty?
+      Rails.logger.info("StripeWebhookService: No pending items for #{client.name} cycle #{cycle_id}, skipping invoice creation")
+      return
+    end
+
+    invoice = Invoice.create!(
+      client: client,
+      invoice_type: "cost_based",
+      payment_type: "infrastructure",
+      status: "sent",
+      collection_method: @data.collection_method,
+      period_start: period_start,
+      period_end: period_end,
+      stripe_invoice_id: @data.id,
+      stripe_status: @data.status,
+      stripe_hosted_invoice_url: @data.hosted_invoice_url,
+      due_date: @data.due_date ? Time.at(@data.due_date).to_date : nil,
+      subtotal: 0,
+      total: 0
+    )
+
+    # Create line items from pending billing items
+    pending_items.each do |pending_item|
+      invoice.line_items.create!(
+        app_id: pending_item.app_id,
+        description: pending_item.description,
+        internal_cost: pending_item.internal_cost,
+        markup_percentage: pending_item.markup_percentage,
+        amount: pending_item.billed_amount
+      )
+
+      pending_item.mark_invoiced!(@data.id)
+    end
+
+    invoice.recalculate_totals!
+
+    AuditLogger.log(
+      user: nil,
+      action: "subscription_invoice_created",
+      auditable: invoice,
+      changes_data: {
+        stripe_invoice_id: @data.id,
+        client: client.name,
+        cycle: cycle_id,
+        line_items_count: pending_items.size,
+        total: invoice.total.to_f
+      }
+    )
+
+    Rails.logger.info("StripeWebhookService: Created local Invoice ##{invoice.id} from subscription for #{client.name} (#{cycle_id}), total: $#{'%.2f' % invoice.total}")
+  end
 
   def handle_invoice_paid
     invoice = find_invoice
@@ -131,6 +205,18 @@ class StripeWebhookService
 
       Rails.logger.info("StripeWebhookService: Payment method saved for Client ##{client.id}")
     end
+  end
+
+  def fire_agent_trigger!
+    event_data = {
+      stripe_event_id: @event.id,
+      type: @type,
+      data: @data.to_h,
+      created: @event.created
+    }
+    AgentTriggerService.fire_event("stripe.#{@type}", event_data)
+  rescue => e
+    Rails.logger.error("StripeWebhookService: Failed to fire agent trigger: #{e.message}")
   end
 
   def configure_stripe!

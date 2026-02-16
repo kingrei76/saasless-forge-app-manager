@@ -3,7 +3,7 @@
 <div class="card bg-base-100 shadow max-w-xl">
   <div class="card-body">
     <div class="grid grid-cols-2 gap-4 text-sm">
-      <div><span class="opacity-60">Time</span><p class="font-medium"><%= @audit_log.created_at.strftime("%B %d, %Y %H:%M:%S") %></p></div>
+      <div><span class="opacity-60">Time</span><p class="font-medium"><%= local_time(@audit_log.created_at, "long-datetime") %></p></div>
       <div><span class="opacity-60">User</span><p class="font-medium"><%= @audit_log.user&.email || "System" %></p></div>
       <div><span class="opacity-60">Action</span><p class="font-medium"><%= @audit_log.action %></p></div>
       <div><span class="opacity-60">Resource</span><p class="font-medium"><%= "#{@audit_log.auditable_type} ##{@audit_log.auditable_id}" if @audit_log.auditable_type %></p></div>

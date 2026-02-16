@@ -14,7 +14,7 @@
     <tbody>
       <% @audit_logs.each do |log| %>
         <tr>
-          <td class="text-sm"><%= log.created_at.strftime("%b %d, %Y %H:%M") %></td>
+          <td class="text-sm"><%= local_time(log.created_at, "short-datetime") %></td>
           <td><%= log.user&.email || "System" %></td>
           <td><span class="badge badge-outline badge-sm"><%= log.action %></span></td>
           <td class="text-sm"><%= "#{log.auditable_type} ##{log.auditable_id}" if log.auditable_type %></td>

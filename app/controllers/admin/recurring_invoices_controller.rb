@@ -1,7 +1,7 @@
 class Admin::RecurringInvoicesController < Admin::BaseController
   include ActionView::Helpers::NumberHelper
   before_action :require_admin!
-  before_action :set_recurring_invoice, only: [:show, :edit, :update, :destroy, :activate, :pause, :cancel, :setup_payment_method, :send_payment_setup]
+  before_action :set_recurring_invoice, only: [:show, :edit, :update, :destroy, :activate, :pause, :cancel, :setup_payment_method, :send_payment_setup, :migrate_to_subscription]
 
   def index
     RecurringInvoice.ensure_for_billable_clients!
@@ -78,6 +78,33 @@ class Admin::RecurringInvoicesController < Admin::BaseController
     redirect_to session.url, allow_other_host: true
   rescue Stripe::StripeError => e
     redirect_to admin_recurring_invoice_path(@recurring_invoice), alert: "Stripe error: #{e.message}"
+  end
+
+  def migrate_to_subscription
+    client = @recurring_invoice.client
+
+    service = StripeSubscriptionSetupService.new(client)
+    subscription = service.create_subscription!
+
+    # Pause the old recurring invoice so both systems don't bill
+    @recurring_invoice.pause! if @recurring_invoice.active?
+
+    AuditLogger.log(
+      user: current_user,
+      action: "migrated_to_subscription_billing",
+      auditable: @recurring_invoice,
+      changes_data: {
+        client: client.name,
+        subscription_id: subscription.id
+      }
+    )
+
+    redirect_to admin_recurring_invoice_path(@recurring_invoice),
+      notice: "#{client.name} migrated to subscription billing! Subscription #{subscription.id} created. Old recurring invoice paused."
+  rescue Stripe::StripeError => e
+    redirect_to admin_recurring_invoice_path(@recurring_invoice), alert: "Stripe error: #{e.message}"
+  rescue StandardError => e
+    redirect_to admin_recurring_invoice_path(@recurring_invoice), alert: "Error: #{e.message}"
   end
 
   def send_payment_setup

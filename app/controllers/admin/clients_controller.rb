@@ -26,6 +26,16 @@ class Admin::ClientsController < Admin::BaseController
     @project_invoices = @client.invoices.project_invoices.order(created_at: :desc)
     @infrastructure_invoices = @client.invoices.infrastructure.order(created_at: :desc)
     @outstanding_balance = @client.invoices.where(status: %w[draft sent]).sum(:total)
+
+    # Current billing cycle usage (for subscription clients)
+    if @client.has_stripe_subscription?
+      period_start, period_end = @client.current_billing_period
+      cycle_id = period_start.strftime("%Y-%m")
+      @pending_items = @client.pending_billing_items.pending.for_cycle(cycle_id).includes(:app)
+      @cycle_total = @pending_items.sum(:billed_amount)
+      @cycle_internal_total = @pending_items.sum(:internal_cost)
+      @billing_period = [period_start, period_end]
+    end
   end
 
   def new

@@ -60,7 +60,7 @@
             <% if invoice.project %>
               <%= link_to invoice.project.title, admin_project_path(invoice.project), class: "link link-secondary" %>
             <% elsif invoice.period_start && invoice.period_end %>
-              <%= invoice.period_start.strftime("%b %d") %> - <%= invoice.period_end.strftime("%b %d, %Y") %>
+              <%= local_time(invoice.period_start, "month-day") %> - <%= local_time(invoice.period_end, "short-date") %>
             <% else %>
               —
             <% end %>

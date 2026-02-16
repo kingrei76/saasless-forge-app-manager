@@ -31,7 +31,7 @@
     <div class="text-right">
       <div class="text-sm opacity-70">Billing Period</div>
       <div class="font-semibold">
-        <%= @billing_period_start.strftime("%b %d") %> - <%= @billing_period_end.strftime("%b %d, %Y") %>
+        <%= local_time(@billing_period_start, "month-day") %> - <%= local_time(@billing_period_end, "short-date") %>
       </div>
       <div class="text-xs opacity-60">
         Day <%= @days_into_cycle %> of <%= @days_in_cycle %> (<%= @cycle_progress %>%)

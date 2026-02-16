@@ -55,7 +55,7 @@
                     <% end %>
                   </td>
                   <td class="text-sm opacity-70">
-                    <%= user.created_at.strftime("%b %d, %Y") %>
+                    <%= local_time(user.created_at) %>
                   </td>
                   <td class="text-right">
                     <% if user != current_user %>
@@ -129,7 +129,7 @@
                       <span class="badge badge-sm badge-warning gap-1"><i class="fas fa-clock text-xs"></i> Pending</span>
                     <% end %>
                   </td>
-                  <td class="text-sm opacity-70"><%= allowed.created_at.strftime("%b %d, %Y") %></td>
+                  <td class="text-sm opacity-70"><%= local_time(allowed.created_at) %></td>
                   <td class="text-right">
                     <%= button_to admin_user_path(allowed), method: :delete,
                           class: "btn btn-ghost btn-xs text-error",
