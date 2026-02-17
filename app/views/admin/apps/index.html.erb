@@ -18,6 +18,12 @@
           <label class="label"><span class="label-text">Type</span></label>
           <%= f.select :app_type, [["All Types", ""], ["Client App", "client_app"], ["Shared Microservice", "shared_microservice"], ["Internal Tool", "internal_tool"]], { selected: params[:app_type] }, class: "select select-bordered select-sm", data: { action: "change->filter#submit" } %>
         </div>
+        <div class="form-control">
+          <label class="label cursor-pointer gap-2">
+            <%= f.check_box :show_excluded, { checked: params[:show_excluded] == "1", class: "checkbox checkbox-sm", data: { action: "change->filter#submit" } }, "1", "0" %>
+            <span class="label-text">Show Excluded</span>
+          </label>
+        </div>
         <div>
           <%= f.submit "Filter", class: "btn btn-primary btn-sm" %>
           <%= link_to "Clear", admin_apps_path, class: "btn btn-ghost btn-sm" %>

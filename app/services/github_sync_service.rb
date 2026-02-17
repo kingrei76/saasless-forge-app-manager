@@ -71,8 +71,18 @@ class GithubSyncService
       synced_count += 1
     end
 
+    # Exclude existing apps from this account that are outside the target org
+    excluded_count = 0
+    if @target_org
+      outside_apps = @account.apps.where.not(github_owner: nil)
+                              .where.not("LOWER(github_owner) = ?", @target_org.downcase)
+                              .where(included: true)
+      excluded_count = outside_apps.count
+      outside_apps.update_all(included: false) if excluded_count > 0
+    end
+
     @account.update!(last_synced_at: Time.current)
-    { synced: synced_count, skipped: skipped_count, filtered: filtered_count, total_repos: repos.size }
+    { synced: synced_count, skipped: skipped_count, filtered: filtered_count, excluded: excluded_count, total_repos: repos.size }
   rescue StandardError => e
     Rails.logger.error("GitHub sync failed for account #{@account.id}: #{e.message}")
     raise

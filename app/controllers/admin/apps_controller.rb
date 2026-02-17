@@ -5,6 +5,7 @@ class Admin::AppsController < Admin::BaseController
     @apps = App.includes(:github_account, :clients)
     @apps = @apps.where(app_type: params[:app_type]) if params[:app_type].present?
     @apps = @apps.search(params[:search])
+    @apps = @apps.included unless params[:show_excluded] == "1"
     @apps = @apps.order(:name)
   end
 
@@ -49,18 +50,21 @@ class Admin::AppsController < Admin::BaseController
 
     total_synced = 0
     total_filtered = 0
+    total_excluded = 0
     errors = []
 
     accounts.each do |account|
       result = GithubSyncService.new(account).sync!
       total_synced += result[:synced].to_i
       total_filtered += result[:filtered].to_i
+      total_excluded += result[:excluded].to_i
     rescue StandardError => e
       errors << "#{account.display_name}: #{e.message}"
     end
 
     notice = "Synced #{total_synced} repos from #{accounts.count} account(s)."
     notice += " #{total_filtered} filtered (outside org)." if total_filtered > 0
+    notice += " #{total_excluded} existing app(s) excluded." if total_excluded > 0
     notice += " Errors: #{errors.join('; ')}" if errors.any?
 
     redirect_to admin_apps_path, notice: notice
