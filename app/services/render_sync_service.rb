@@ -58,7 +58,8 @@ class RenderSyncService
 
   # Sync app metadata (render_service_id, type, plan, etc.) without creating cost entries
   def sync_app_metadata
-    apps_by_name = App.all.index_by { |a| a.name.downcase }
+    apps_scope = @github_account ? @github_account.apps : App.all
+    apps_by_name = apps_scope.index_by { |a| a.name.downcase }
     results = { updated: 0, matched: 0, unmatched: [], services_synced: 0 }
 
     # Sync to RenderService model
@@ -232,6 +233,8 @@ class RenderSyncService
       )
 
       results[:updated] += 1
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.warn "[RenderSync] Skipped metadata for '#{svc['name']}': #{e.message}"
     end
   end
 
@@ -265,6 +268,8 @@ class RenderSyncService
       )
 
       results[:updated] += 1
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.warn "[RenderSync] Skipped postgres metadata for '#{db['name']}': #{e.message}"
     end
   end
 

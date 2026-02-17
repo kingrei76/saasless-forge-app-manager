@@ -17,40 +17,40 @@ class Admin::InfrastructureController < Admin::BaseController
   end
 
   def sync_render
-    accounts_with_render = GithubAccount.with_render
-
-    if accounts_with_render.empty?
-      redirect_to admin_infrastructure_path(tab: "render_services"), alert: "No GitHub accounts have Render API keys configured. Please configure Render in GitHub Accounts."
-      return
-    end
-
-    total_results = { services_synced: 0, services_created: 0, services_updated: 0 }
+    github_accounts = GithubAccount.all
+    render_accounts = GithubAccount.with_render
     errors = []
+    github_synced = 0
+    render_results = { services_synced: 0, services_created: 0, services_updated: 0 }
 
-    accounts_with_render.each do |account|
-      begin
-        result = RenderSyncService.new(github_account: account).sync_render_services
-        account.update!(render_last_synced_at: Time.current)
-
-        total_results[:services_synced] += result[:services_synced].to_i
-        total_results[:services_created] += result[:services_created].to_i
-        total_results[:services_updated] += result[:services_updated].to_i
-      rescue StandardError => e
-        Rails.logger.error "Render sync failed for #{account.account_name}: #{e.message}"
-        errors << "#{account.display_name}: #{e.message}"
-      end
+    # Sync GitHub repos from all accounts
+    github_accounts.each do |account|
+      result = GithubSyncService.new(account).sync!
+      github_synced += result[:synced].to_i
+    rescue StandardError => e
+      errors << "GitHub #{account.display_name}: #{e.message}"
     end
 
-    notice = "Synced #{total_results[:services_synced]} Render services from #{accounts_with_render.count} account(s)"
-    notice += " (#{total_results[:services_created]} new, #{total_results[:services_updated]} updated)" if total_results[:services_created] > 0 || total_results[:services_updated] > 0
-
-    if errors.any?
-      redirect_to admin_infrastructure_path(tab: "render_services"), alert: "#{notice}. Errors: #{errors.join('; ')}"
-    else
-      redirect_to admin_infrastructure_path(tab: "render_services"), notice: notice
+    # Sync Render services from all Render accounts
+    render_accounts.each do |account|
+      result = RenderSyncService.new(github_account: account).sync_render_services
+      account.update!(render_last_synced_at: Time.current)
+      render_results[:services_synced] += result[:services_synced].to_i
+      render_results[:services_created] += result[:services_created].to_i
+      render_results[:services_updated] += result[:services_updated].to_i
+    rescue StandardError => e
+      errors << "Render #{account.display_name}: #{e.message}"
     end
+
+    messages = []
+    messages << "#{github_synced} repos from #{github_accounts.count} GitHub account(s)" if github_synced > 0
+    messages << "#{render_results[:services_synced]} Render services from #{render_accounts.count} account(s)" if render_results[:services_synced] > 0
+
+    notice = "Sync complete. #{messages.join(', ')}."
+    notice += " Errors: #{errors.join('; ')}" if errors.any?
+
+    redirect_to admin_infrastructure_path(tab: "render_services"), notice: notice
   rescue StandardError => e
-    Rails.logger.error "Render sync failed: #{e.message}\n#{e.backtrace.first(5).join("\n")}"
     redirect_to admin_infrastructure_path(tab: "render_services"), alert: "Sync failed: #{e.message}"
   end
 
@@ -65,10 +65,6 @@ class Admin::InfrastructureController < Admin::BaseController
     @render_services = RenderService.includes(:app, :render_workspace).order(:name)
 
     # Filters
-    if params[:github_account_id].present?
-      app_ids = GithubAccount.find(params[:github_account_id]).apps.pluck(:id)
-      @render_services = @render_services.where(app_id: app_ids)
-    end
     @render_services = @render_services.by_type(params[:service_type]) if params[:service_type].present?
     @render_services = @render_services.by_owner(params[:owner_id]) if params[:owner_id].present?
 
@@ -80,7 +76,6 @@ class Admin::InfrastructureController < Admin::BaseController
 
     @apps = App.order(:name)
     @workspaces = RenderWorkspace.order(:name)
-    @github_accounts = GithubAccount.with_render.order(:account_name)
     @service_types = RenderService.distinct.pluck(:service_type).compact.sort
 
     # Render stats

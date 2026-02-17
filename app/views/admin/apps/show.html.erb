@@ -21,8 +21,20 @@
         <div><span class="opacity-60">Default Branch</span><p class="font-medium"><%= @app.default_branch %></p></div>
         <div><span class="opacity-60">Status</span><p class="font-medium"><%= @app.status || "—" %></p></div>
         <div><span class="opacity-60">Included</span><p><span class="badge badge-<%= @app.included? ? 'success' : 'ghost' %> badge-sm"><%= @app.included? ? 'Yes' : 'No' %></span></p></div>
+        <div>
+          <span class="opacity-60">Type</span>
+          <p><%= app_type_badge(@app.app_type) %></p>
+        </div>
         <div class="col-span-2"><span class="opacity-60">Description</span><p><%= @app.description || "—" %></p></div>
       </div>
+      <div class="divider my-2"></div>
+      <%= form_with model: [:admin, @app], class: "flex items-end gap-3" do |f| %>
+        <div class="form-control">
+          <label class="label py-0"><span class="label-text text-xs">Change Type</span></label>
+          <%= f.select :app_type, [["Client App", "client_app"], ["Shared Microservice", "shared_microservice"], ["Internal Tool", "internal_tool"]], {}, class: "select select-bordered select-sm" %>
+        </div>
+        <%= f.submit "Update", class: "btn btn-primary btn-sm" %>
+      <% end %>
     </div>
   </div>
 

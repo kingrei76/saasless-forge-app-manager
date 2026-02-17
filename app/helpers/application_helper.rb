@@ -29,6 +29,16 @@ module ApplicationHelper
     )
   end
 
+  def app_type_badge(app_type)
+    config = {
+      "client_app"          => { label: "Client App",          badge: "badge-primary" },
+      "shared_microservice" => { label: "Shared Microservice", badge: "badge-secondary" },
+      "internal_tool"       => { label: "Internal Tool",       badge: "badge-accent" }
+    }
+    c = config[app_type.to_s] || { label: app_type.to_s.titleize, badge: "badge-ghost" }
+    content_tag(:span, c[:label], class: "badge #{c[:badge]} badge-sm")
+  end
+
   private
 
   def format_datetime_fallback(datetime, format_name)

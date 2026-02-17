@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_16_100001) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_16_300001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -363,7 +363,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_16_100001) do
     t.datetime "render_created_at"
     t.string "ai_api_key"
     t.string "ai_api_provider", default: "grok"
+    t.string "github_owner"
+    t.string "app_type", default: "client_app", null: false
+    t.index ["app_type"], name: "index_apps_on_app_type"
     t.index ["github_account_id"], name: "index_apps_on_github_account_id"
+    t.index ["github_owner"], name: "index_apps_on_github_owner"
     t.index ["github_repo_id"], name: "index_apps_on_github_repo_id", unique: true
     t.index ["render_owner_id"], name: "index_apps_on_render_owner_id"
     t.index ["render_service_id"], name: "index_apps_on_render_service_id", unique: true

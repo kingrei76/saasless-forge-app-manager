@@ -1,6 +1,7 @@
 class ServiceProvider < ApplicationRecord
   encrypts :api_key, :usage_api_key
 
+  has_many :ai_models, dependent: :destroy
   has_many :app_service_configs, dependent: :destroy
   has_many :apps, through: :app_service_configs
   has_many :api_usage_logs

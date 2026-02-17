@@ -3,11 +3,9 @@ class Admin::AppsController < Admin::BaseController
 
   def index
     @apps = App.includes(:github_account, :clients)
-    @apps = @apps.by_account(params[:github_account_id])
+    @apps = @apps.where(app_type: params[:app_type]) if params[:app_type].present?
     @apps = @apps.search(params[:search])
     @apps = @apps.order(:name)
-
-    @github_accounts = GithubAccount.order(:account_name)
   end
 
   def show
@@ -43,9 +41,29 @@ class Admin::AppsController < Admin::BaseController
   end
 
   def sync
-    account = GithubAccount.find(params[:github_account_id])
-    result = GithubSyncService.new(account).sync!
-    redirect_to admin_apps_path, notice: "Synced #{result[:synced]} repos from #{account.display_name}."
+    accounts = if params[:github_account_id].present?
+      GithubAccount.where(id: params[:github_account_id])
+    else
+      GithubAccount.all
+    end
+
+    total_synced = 0
+    total_filtered = 0
+    errors = []
+
+    accounts.each do |account|
+      result = GithubSyncService.new(account).sync!
+      total_synced += result[:synced].to_i
+      total_filtered += result[:filtered].to_i
+    rescue StandardError => e
+      errors << "#{account.display_name}: #{e.message}"
+    end
+
+    notice = "Synced #{total_synced} repos from #{accounts.count} account(s)."
+    notice += " #{total_filtered} filtered (outside org)." if total_filtered > 0
+    notice += " Errors: #{errors.join('; ')}" if errors.any?
+
+    redirect_to admin_apps_path, notice: notice
   rescue StandardError => e
     redirect_to admin_apps_path, alert: "Sync failed: #{e.message}"
   end
@@ -57,7 +75,7 @@ class Admin::AppsController < Admin::BaseController
   end
 
   def app_params
-    permitted = params.require(:app).permit(:status, :included, :ai_api_key, tags: [])
+    permitted = params.require(:app).permit(:status, :included, :ai_api_key, :app_type, tags: [])
     # Don't overwrite API key with placeholder or empty value
     if permitted[:ai_api_key].blank? || permitted[:ai_api_key].to_s.start_with?("\u2022")
       permitted.delete(:ai_api_key)

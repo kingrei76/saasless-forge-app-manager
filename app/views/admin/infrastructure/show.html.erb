@@ -43,6 +43,13 @@
     </a>
     <a href="#"
        data-toggle-target="tab"
+       data-tab="ai_models"
+       data-action="click->toggle#show"
+       class="tab <%= @tab == 'ai_models' ? 'tab-active' : '' %>">
+      <i class="fas fa-brain mr-2"></i> AI Models
+    </a>
+    <a href="#"
+       data-toggle-target="tab"
        data-tab="usage"
        data-action="click->toggle#show"
        class="tab <%= @tab == 'usage' ? 'tab-active' : '' %>">
@@ -58,6 +65,11 @@
   <%# Render Services Tab %>
   <div data-toggle-target="panel" data-panel="render_services" class="<%= @tab != 'render_services' ? 'hidden' : '' %>">
     <%= render "render_services_tab" %>
+  </div>
+
+  <%# AI Models Tab %>
+  <div data-toggle-target="panel" data-panel="ai_models" class="<%= @tab != 'ai_models' ? 'hidden' : '' %>">
+    <%= render "ai_models_tab" %>
   </div>
 
   <%# Usage & Costs Tab %>

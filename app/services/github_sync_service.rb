@@ -2,15 +2,24 @@ class GithubSyncService
   def initialize(github_account)
     @account = github_account
     @api = GithubApiService.new(access_token: @account.access_token)
+    @target_org = Setting[:github_target_organization].presence
   end
 
   def sync!
     repos = @api.all_repos
     synced_count = 0
     skipped_count = 0
+    filtered_count = 0
 
     repos.each do |repo_data|
       github_repo_id = repo_data["id"].to_s
+      owner = repo_data.dig("owner", "login")
+
+      # Filter by target organization if configured
+      if @target_org && owner&.downcase != @target_org.downcase
+        filtered_count += 1
+        next
+      end
 
       # Check if this repo already exists (globally, not just for this account)
       existing_app = App.find_by(github_repo_id: github_repo_id)
@@ -31,6 +40,7 @@ class GithubSyncService
         description: repo_data["description"],
         default_branch: repo_data["default_branch"],
         language: repo_data["language"],
+        github_owner: owner,
         github_metadata: {
           private: repo_data["private"],
           fork: repo_data["fork"],
@@ -43,9 +53,9 @@ class GithubSyncService
 
       # Fetch latest commit
       if repo_data["full_name"]
-        owner, repo_name = repo_data["full_name"].split("/")
+        repo_owner, repo_name = repo_data["full_name"].split("/")
         commit = @api.latest_commit(
-          owner: owner,
+          owner: repo_owner,
           repo: repo_name,
           branch: repo_data["default_branch"] || "main"
         )
@@ -62,7 +72,7 @@ class GithubSyncService
     end
 
     @account.update!(last_synced_at: Time.current)
-    { synced: synced_count, skipped: skipped_count, total_repos: repos.size }
+    { synced: synced_count, skipped: skipped_count, filtered: filtered_count, total_repos: repos.size }
   rescue StandardError => e
     Rails.logger.error("GitHub sync failed for account #{@account.id}: #{e.message}")
     raise

@@ -57,6 +57,32 @@ class Admin::GithubAccountsController < Admin::BaseController
     end
   end
 
+  def sync_all
+    accounts = GithubAccount.all
+    total_synced = 0
+    total_render = 0
+    errors = []
+
+    accounts.each do |account|
+      result = GithubSyncService.new(account).sync!
+      total_synced += result[:synced].to_i
+
+      if account.render_configured?
+        RenderSyncService.new(github_account: account).sync_render_services
+        account.update!(render_last_synced_at: Time.current)
+        total_render += 1
+      end
+    rescue StandardError => e
+      errors << "#{account.display_name}: #{e.message}"
+    end
+
+    notice = "Synced #{total_synced} repos from #{accounts.count} GitHub account(s)"
+    notice += ", #{total_render} Render account(s)" if total_render > 0
+    notice += ". Errors: #{errors.join('; ')}" if errors.any?
+
+    redirect_to admin_github_accounts_path, notice: notice
+  end
+
   def sync
     account = GithubAccount.find(params[:id])
     result = GithubSyncService.new(account).sync!

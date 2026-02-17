@@ -81,8 +81,7 @@
                       app_ids << aa.app_id
 
                       aa.app.render_services.reject(&:suspended?).each do |rs|
-                        price = RenderPrice.where(service_type: rs.service_type, plan_name: rs.plan).order(effective_from: :desc).first
-                        base = price&.monthly_price || 0
+                        base = rs.monthly_price
                         infra_floor += (base * (1 + markup / 100.0)).round(2) if base > 0
                       end
                     end

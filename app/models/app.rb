@@ -1,6 +1,8 @@
 class App < ApplicationRecord
   encrypts :ai_api_key
 
+  enum :app_type, { client_app: "client_app", shared_microservice: "shared_microservice", internal_tool: "internal_tool" }
+
   belongs_to :github_account
   belongs_to :render_workspace, primary_key: :render_owner_id, foreign_key: :render_owner_id, optional: true
   has_many :app_assignments, dependent: :destroy
@@ -22,6 +24,7 @@ class App < ApplicationRecord
   scope :included, -> { where(included: true) }
   scope :excluded, -> { where(included: false) }
   scope :by_account, ->(account_id) { where(github_account_id: account_id) if account_id.present? }
+  scope :by_owner, ->(owner) { where(github_owner: owner) if owner.present? }
   scope :search, ->(query) { where("name ILIKE ? OR full_name ILIKE ?", "%#{query}%", "%#{query}%") if query.present? }
   scope :with_render, -> { where.not(render_service_id: nil) }
   scope :by_render_owner, ->(owner_id) { where(render_owner_id: owner_id) if owner_id.present? }

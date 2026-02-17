@@ -77,36 +77,41 @@ class Admin::CostEntriesController < Admin::BaseController
   end
 
   def sync_render
-    accounts_with_render = GithubAccount.with_render
+    github_accounts = GithubAccount.all
+    render_accounts = GithubAccount.with_render
+    errors = []
+    github_synced = 0
+    render_results = { updated: 0, matched: 0, unmatched: [], services_synced: 0 }
 
-    if accounts_with_render.empty?
-      redirect_to admin_cost_entries_path(client_id: params[:client_id]), alert: "No GitHub accounts have Render API keys configured."
-      return
+    # Sync GitHub repos from all accounts
+    github_accounts.each do |account|
+      result = GithubSyncService.new(account).sync!
+      github_synced += result[:synced].to_i
+    rescue StandardError => e
+      errors << "GitHub #{account.display_name}: #{e.message}"
     end
 
-    metadata_results = { updated: 0, matched: 0, unmatched: [], services_synced: 0 }
-    errors = []
-
-    accounts_with_render.each do |account|
-      begin
-        result = RenderSyncService.new(github_account: account).sync_app_metadata
-        metadata_results[:updated] += result[:updated].to_i
-        metadata_results[:services_synced] += result[:services_synced].to_i
-        metadata_results[:unmatched].concat(result[:unmatched] || [])
-      rescue StandardError => e
-        errors << "#{account.display_name}: #{e.message}"
-      end
+    # Sync Render services and app metadata from all Render accounts
+    render_accounts.each do |account|
+      result = RenderSyncService.new(github_account: account).sync_app_metadata
+      render_results[:updated] += result[:updated].to_i
+      render_results[:services_synced] += result[:services_synced].to_i
+      render_results[:unmatched].concat(result[:unmatched] || [])
+      account.update!(render_last_synced_at: Time.current)
+    rescue StandardError => e
+      errors << "Render #{account.display_name}: #{e.message}"
     end
 
     # Calculate costs for all clients
     cost_results = RenderCostCalculator.new.calculate_all_clients
 
     messages = []
-    messages << "#{metadata_results[:updated]} apps updated from #{accounts_with_render.count} Render account(s)" if metadata_results[:updated] > 0
-    messages << "#{cost_results[:calculated]} cost calculations created/updated" if cost_results[:calculated].to_i > 0
+    messages << "#{github_synced} repos synced from #{github_accounts.count} GitHub account(s)" if github_synced > 0
+    messages << "#{render_results[:services_synced]} Render services from #{render_accounts.count} account(s)" if render_results[:services_synced] > 0
+    messages << "#{cost_results[:calculated]} cost calculations updated" if cost_results[:calculated].to_i > 0
 
-    notice = "Render sync complete. #{messages.join(', ')}."
-    notice += " Unmatched: #{metadata_results[:unmatched].join(', ')}." if metadata_results[:unmatched].any?
+    notice = "Sync complete. #{messages.join(', ')}."
+    notice += " Unmatched: #{render_results[:unmatched].join(', ')}." if render_results[:unmatched].any?
     notice += " Errors: #{errors.join('; ')}" if errors.any?
 
     redirect_to admin_cost_entries_path(client_id: params[:client_id]), notice: notice

@@ -7,6 +7,7 @@
     </div>
     <div class="stat-title">Apps</div>
     <div class="stat-value text-primary"><%= @app_count %></div>
+    <div class="stat-desc"><%= @app_type_counts.fetch("client_app", 0) %> client, <%= @app_type_counts.fetch("shared_microservice", 0) %> shared, <%= @app_type_counts.fetch("internal_tool", 0) %> internal</div>
   </div>
 
   <div class="stat bg-base-100 rounded-box shadow">
@@ -31,6 +32,34 @@
     </div>
     <div class="stat-title">Monthly Revenue</div>
     <div class="stat-value text-success"><%= number_to_currency(@monthly_revenue) %></div>
+  </div>
+</div>
+
+<!-- AI Agent Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-figure text-info">
+      <i class="fas fa-robot text-2xl"></i>
+    </div>
+    <div class="stat-title">Active Agents</div>
+    <div class="stat-value text-info"><%= @agent_count %></div>
+    <div class="stat-desc"><%= link_to "View agents", admin_agents_path, class: "link" %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-figure text-warning">
+      <i class="fas fa-play-circle text-2xl"></i>
+    </div>
+    <div class="stat-title">Executions Today</div>
+    <div class="stat-value text-warning"><%= @agent_executions_today %></div>
+    <div class="stat-desc"><%= link_to "View executions", admin_agent_executions_path, class: "link" %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-figure text-error">
+      <i class="fas fa-bell text-2xl"></i>
+    </div>
+    <div class="stat-title">Open Alerts</div>
+    <div class="stat-value text-error"><%= @agent_open_alerts %></div>
+    <div class="stat-desc"><%= link_to "View alerts", admin_agent_alerts_path, class: "link" %></div>
   </div>
 </div>
 

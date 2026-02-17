@@ -6,7 +6,7 @@
   </div>
   <div class="flex gap-2">
     <%= button_to sync_render_admin_infrastructure_path, method: :post, class: "btn btn-outline btn-sm" do %>
-      <i class="fas fa-sync mr-1"></i> Sync from Render
+      <i class="fas fa-sync mr-1"></i> Sync All
     <% end %>
   </div>
 </div>
@@ -43,14 +43,6 @@
 <div class="bg-base-100 rounded-box shadow p-4 mb-6">
   <%= form_tag admin_infrastructure_path, method: :get, class: "flex flex-wrap gap-4 items-end" do %>
     <%= hidden_field_tag :tab, "render_services" %>
-
-    <div class="form-control">
-      <label class="label"><span class="label-text">GitHub Account</span></label>
-      <%= select_tag :github_account_id,
-          options_from_collection_for_select(@github_accounts, :id, :display_name, params[:github_account_id]),
-          include_blank: "All Accounts",
-          class: "select select-bordered select-sm w-40" %>
-    </div>
 
     <div class="form-control">
       <label class="label"><span class="label-text">Service Type</span></label>

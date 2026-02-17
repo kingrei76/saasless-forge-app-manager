@@ -2,7 +2,7 @@
   <h2 class="text-2xl font-bold">App Cost Monitoring</h2>
   <div class="flex gap-2">
     <%= button_to sync_render_admin_cost_entries_path(client_id: @selected_client&.id), method: :post, class: "btn btn-outline btn-sm" do %>
-      <i class="fas fa-sync mr-1"></i> Sync from Render
+      <i class="fas fa-sync mr-1"></i> Sync All
     <% end %>
     <%= link_to new_admin_cost_entry_path, class: "btn btn-primary btn-sm" do %>
       <i class="fas fa-plus mr-1"></i> Add Manual Entry
@@ -41,6 +41,21 @@
 </div>
 
 <% if @unified_costs.present? %>
+  <% unassigned_apps = @unified_costs.values.select { |d| d[:clients].blank? && d[:app] } %>
+  <% if unassigned_apps.any? %>
+    <div class="alert alert-warning mb-6">
+      <i class="fas fa-exclamation-triangle"></i>
+      <div>
+        <strong><%= unassigned_apps.size %> app<%= unassigned_apps.size > 1 ? 's have' : ' has' %> costs but no client assigned:</strong>
+        <span>
+          <% unassigned_apps.each_with_index do |d, i| %>
+            <%= link_to d[:app].name, admin_app_path(d[:app]), class: "link font-semibold" %><%= i < unassigned_apps.size - 1 ? ', ' : '' %>
+          <% end %>
+          — assign to a client via <strong><%= link_to "Clients", admin_clients_path, class: "link" %></strong> so they appear in recurring billing.
+        </span>
+      </div>
+    </div>
+  <% end %>
   <%# Unified Costs by App Table with collapsible charge detail %>
   <div class="overflow-x-auto bg-base-100 rounded-box shadow mb-6">
     <table class="table table-sm">
@@ -64,13 +79,17 @@
         <% services = data[:render_services].presence || [] %>
         <% calculated = (data[:services] || []).index_by(&:render_service_id) %>
 
+        <% unassigned = data[:clients].blank? %>
         <tbody data-controller="cost-collapse">
           <%# === App summary row (clickable to expand) === %>
-          <tr class="bg-base-200/50 font-semibold border-t-2 border-base-300 cursor-pointer hover:bg-base-200"
+          <tr class="<%= unassigned ? 'bg-warning/10 border-l-4 border-l-warning' : 'bg-base-200/50' %> font-semibold border-t-2 border-base-300 cursor-pointer hover:bg-base-200"
               data-action="click->cost-collapse#toggle">
             <td>
               <i class="fas fa-chevron-right text-xs opacity-40 mr-2 transition-transform" data-cost-collapse-target="icon"></i>
               <%= link_to app.name, admin_app_path(app), class: "link link-primary" %>
+              <% if unassigned %>
+                <span class="badge badge-warning badge-xs ml-1">No Client</span>
+              <% end %>
             </td>
             <td>
               <div class="flex gap-1">
@@ -83,7 +102,13 @@
             <td class="text-right"><%= number_to_currency(data[:total_projected]) %></td>
             <td class="text-center"><%= data[:days_active] %> / <%= data[:days_in_period] %></td>
             <% unless @selected_client %>
-              <td><%= data[:clients]&.join(", ") %></td>
+              <td>
+                <% if unassigned %>
+                  <span class="text-warning font-medium"><i class="fas fa-exclamation-triangle mr-1"></i>Unassigned</span>
+                <% else %>
+                  <%= data[:clients]&.join(", ") %>
+                <% end %>
+              </td>
             <% end %>
           </tr>
 
