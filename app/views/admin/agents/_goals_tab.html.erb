@@ -1,0 +1,62 @@
+<!-- Add Goal Form -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-lg">Add Goal</h3>
+    <%= form_with(url: admin_agent_agent_goals_path(@agent), method: :post, class: "space-y-3") do |f| %>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Title *</span></label>
+          <input type="text" name="agent_goal[title]" class="input input-bordered input-sm" placeholder="e.g. Process all pending invoices">
+        </div>
+        <div class="form-control">
+          <label class="label"><span class="label-text">Priority</span></label>
+          <input type="number" name="agent_goal[priority]" value="0" class="input input-bordered input-sm">
+        </div>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">Description</span></label>
+        <textarea name="agent_goal[description]" class="textarea textarea-bordered textarea-sm h-16" placeholder="Detailed goal description..."></textarea>
+      </div>
+      <div class="form-control">
+        <label class="label"><span class="label-text">Success Criteria</span></label>
+        <textarea name="agent_goal[success_criteria]" class="textarea textarea-bordered textarea-sm h-16" placeholder="How to measure success..."></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="fas fa-plus mr-1"></i> Add Goal
+      </button>
+    <% end %>
+  </div>
+</div>
+
+<!-- Goals List -->
+<div class="space-y-3">
+  <% @goals.each do |goal| %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body py-4">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <h4 class="font-medium"><%= goal.title %></h4>
+            <% if goal.description.present? %>
+              <p class="text-sm opacity-70 mt-1"><%= goal.description %></p>
+            <% end %>
+            <% if goal.success_criteria.present? %>
+              <p class="text-xs opacity-50 mt-1"><i class="fas fa-check-circle mr-1"></i> <%= goal.success_criteria %></p>
+            <% end %>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-outline badge-sm">Priority: <%= goal.priority %></span>
+            <span class="badge badge-<%= goal.status == 'active' ? 'success' : 'ghost' %> badge-sm"><%= goal.status %></span>
+            <%= button_to admin_agent_agent_goal_path(@agent, goal), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Delete this goal?" } do %>
+              <i class="fas fa-trash"></i>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <% if @goals.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No goals defined.</p>
+    </div>
+  <% end %>
+</div>

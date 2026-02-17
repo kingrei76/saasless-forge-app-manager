@@ -1,0 +1,16 @@
+<% if messages.blank? %>
+  <!-- Welcome message -->
+  <div class="chat chat-start mb-1">
+    <div class="chat-bubble text-sm">
+      <% if agent&.persisted? %>
+        Hi! I'm the Agent Builder. I can help you configure <strong><%= agent_name %></strong>. Ask me to add tools, set up triggers, update the system prompt, or anything else.
+      <% else %>
+        Hi! I'm the Agent Builder. I'll help you create a new agent step by step. What kind of agent would you like to build?
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <% messages.each do |message| %>
+    <%= render "admin/builder_chat/message", message: message %>
+  <% end %>
+<% end %>

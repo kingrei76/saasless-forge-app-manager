@@ -1,0 +1,167 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold">Execution #<%= @execution.id %></h2>
+    <p class="text-sm opacity-60">
+      Agent: <%= link_to @execution.agent.name, admin_agent_path(@execution.agent), class: "link" %>
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <% if @execution.in_progress? %>
+      <%= button_to cancel_admin_agent_execution_path(@execution), method: :post, class: "btn btn-sm btn-error", data: { turbo_confirm: "Cancel this execution?" } do %>
+        <i class="fas fa-stop mr-1"></i> Cancel
+      <% end %>
+    <% end %>
+    <% unless @execution.in_progress? %>
+      <%= button_to retry_admin_agent_execution_path(@execution), method: :post, class: "btn btn-sm btn-primary" do %>
+        <i class="fas fa-redo mr-1"></i> Retry
+      <% end %>
+    <% end %>
+    <%= link_to admin_agent_executions_path, class: "btn btn-ghost btn-sm" do %>
+      <i class="fas fa-arrow-left mr-1"></i> Back
+    <% end %>
+  </div>
+</div>
+
+<!-- Status Overview -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Status</div>
+    <div class="stat-value text-lg"><span class="badge badge-<%= @execution.status_badge_color %>"><%= @execution.status %></span></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Mode</div>
+    <div class="stat-value text-lg"><span class="badge badge-<%= @execution.mode == 'test' ? 'warning' : 'success' %> badge-outline"><%= @execution.mode %></span></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Duration</div>
+    <div class="stat-value text-lg"><%= @execution.duration_display %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Tokens</div>
+    <div class="stat-value text-lg"><%= number_with_delimiter(@execution.total_tokens) %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Cost</div>
+    <div class="stat-value text-lg">$<%= number_with_precision(@execution.total_cost, precision: 4) %></div>
+  </div>
+</div>
+
+<% if @execution.error_message.present? %>
+  <div class="alert alert-error mb-6">
+    <i class="fas fa-exclamation-triangle"></i>
+    <div>
+      <p class="font-medium">Error</p>
+      <p class="text-sm"><%= @execution.error_message %></p>
+    </div>
+  </div>
+<% end %>
+
+<!-- Execution Steps Timeline -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-lg mb-4">Execution Steps</h3>
+
+    <% if @steps.any? %>
+      <ul class="timeline timeline-vertical">
+        <% @steps.each_with_index do |step, i| %>
+          <li>
+            <% if i > 0 %><hr class="bg-<%= step.status == 'completed' ? 'success' : 'base-300' %>"><% end %>
+            <div class="timeline-start text-sm opacity-60">
+              <%= step.started_at ? local_time(step.started_at, "time-only") : "—" %>
+            </div>
+            <div class="timeline-middle">
+              <i class="fas <%= step.step_type_icon %> text-<%= step.status == 'completed' ? 'success' : step.status == 'failed' ? 'error' : 'base-content' %>"></i>
+            </div>
+            <div class="timeline-end timeline-box w-full">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <span class="font-medium">Step <%= step.step_number %>: <%= step.step_type.titleize %></span>
+                  <% if step.tool_definition %>
+                    <span class="text-sm opacity-60"> - <%= step.tool_definition.name %></span>
+                  <% end %>
+                  <% if step.target_agent %>
+                    <span class="text-sm opacity-60"> -> <%= step.target_agent.name %></span>
+                  <% end %>
+                </div>
+                <div class="flex gap-2 items-center">
+                  <span class="badge badge-<%= step.status_badge_color %> badge-sm"><%= step.status %></span>
+                  <% if step.duration_ms %>
+                    <span class="text-xs opacity-60"><%= step.duration_ms %>ms</span>
+                  <% end %>
+                </div>
+              </div>
+
+              <% if step.input_data.present? && step.input_data != {} %>
+                <details class="collapse collapse-arrow bg-base-200 mb-1">
+                  <summary class="collapse-title text-xs py-1 min-h-0">Input</summary>
+                  <div class="collapse-content">
+                    <pre class="text-xs overflow-auto"><%= JSON.pretty_generate(step.input_data) %></pre>
+                  </div>
+                </details>
+              <% end %>
+
+              <% if step.output_data.present? && step.output_data != {} %>
+                <details class="collapse collapse-arrow bg-base-200 mb-1">
+                  <summary class="collapse-title text-xs py-1 min-h-0">Output</summary>
+                  <div class="collapse-content">
+                    <pre class="text-xs overflow-auto"><%= JSON.pretty_generate(step.output_data) %></pre>
+                  </div>
+                </details>
+              <% end %>
+
+              <% if step.error_message.present? %>
+                <div class="text-error text-sm mt-1"><i class="fas fa-exclamation-circle mr-1"></i><%= step.error_message %></div>
+              <% end %>
+
+              <% if step.status == "pending" && step.step_type == "approval_request" %>
+                <div class="flex gap-2 mt-2">
+                  <%= button_to approve_step_admin_agent_execution_path(@execution, step_id: step.id), method: :post, class: "btn btn-success btn-xs" do %>
+                    <i class="fas fa-check mr-1"></i> Approve
+                  <% end %>
+                  <%= button_to reject_step_admin_agent_execution_path(@execution, step_id: step.id), method: :post, class: "btn btn-error btn-xs" do %>
+                    <i class="fas fa-times mr-1"></i> Reject
+                  <% end %>
+                </div>
+              <% end %>
+
+              <% if step.tokens_used.to_i > 0 %>
+                <div class="text-xs opacity-50 mt-1">
+                  <i class="fas fa-coins mr-1"></i> <%= step.tokens_used %> tokens ($<%= number_with_precision(step.cost, precision: 4) %>)
+                </div>
+              <% end %>
+            </div>
+            <% if i < @steps.length - 1 %><hr class="bg-<%= step.status == 'completed' ? 'success' : 'base-300' %>"><% end %>
+          </li>
+        <% end %>
+      </ul>
+    <% else %>
+      <div class="text-center py-8 opacity-60">
+        <p>No steps recorded yet.</p>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Input/Output -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Input Data</h3>
+      <% if @execution.input_data.present? && @execution.input_data != {} %>
+        <pre class="bg-base-200 p-3 rounded text-sm overflow-auto max-h-48"><%= JSON.pretty_generate(@execution.input_data) %></pre>
+      <% else %>
+        <p class="opacity-60">No input data.</p>
+      <% end %>
+    </div>
+  </div>
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Output Data</h3>
+      <% if @execution.output_data.present? && @execution.output_data != {} %>
+        <pre class="bg-base-200 p-3 rounded text-sm overflow-auto max-h-48"><%= JSON.pretty_generate(@execution.output_data) %></pre>
+      <% else %>
+        <p class="opacity-60">No output data.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

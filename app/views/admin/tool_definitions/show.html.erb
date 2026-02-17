@@ -1,0 +1,215 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold"><%= @tool.name %></h2>
+    <p class="text-sm opacity-60"><%= @tool.slug %> &bull; v<%= @tool.version %></p>
+  </div>
+  <div class="flex gap-2">
+    <%= button_to admin_tool_definition_path(@tool), method: :delete,
+        class: "btn btn-error btn-sm",
+        data: { turbo_confirm: "Delete this tool definition? Agents using it will lose access." } do %>
+      <i class="fas fa-trash mr-1"></i> Delete
+    <% end %>
+    <%= link_to admin_tool_definitions_path, class: "btn btn-ghost btn-sm" do %>
+      <i class="fas fa-arrow-left mr-1"></i> Back
+    <% end %>
+  </div>
+</div>
+
+<!-- Status Badges -->
+<div class="flex gap-3 mb-6">
+  <span class="badge badge-<%= @tool.status_badge_color %> badge-lg"><%= @tool.status.capitalize %></span>
+  <span class="badge badge-outline badge-lg"><%= @tool.category.capitalize %></span>
+  <span class="badge badge-<%= @tool.risk_badge_color %> badge-lg">Risk: <%= @tool.risk_level.capitalize %></span>
+</div>
+
+<div data-controller="toggle">
+  <div class="tabs tabs-bordered mb-6">
+    <a class="tab tab-active" data-toggle-target="tab" data-tab="details" data-action="click->toggle#show">Details</a>
+    <a class="tab" data-toggle-target="tab" data-tab="credentials" data-action="click->toggle#show">Credentials (<%= @credentials.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="usage" data-action="click->toggle#show">Usage</a>
+    <a class="tab" data-toggle-target="tab" data-tab="versions" data-action="click->toggle#show">Versions (<%= @versions.count %>)</a>
+  </div>
+
+  <!-- Details Tab -->
+  <div data-toggle-target="panel" data-panel="details">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Description</h3>
+          <%= form_with(model: [:admin, @tool], class: "space-y-3") do |f| %>
+            <%= f.text_area :description, class: "textarea textarea-bordered w-full h-24" %>
+            <div class="flex gap-3 items-end">
+              <div class="form-control flex-1">
+                <label class="label"><span class="label-text">Risk Level</span></label>
+                <%= f.select :risk_level, ToolDefinition::RISK_LEVELS.map { |r| [r.capitalize, r] }, {}, class: "select select-bordered select-sm" %>
+              </div>
+              <div class="form-control flex-1">
+                <label class="label"><span class="label-text">Status</span></label>
+                <%= f.select :status, ToolDefinition::STATUSES.map { |s| [s.capitalize, s] }, {}, class: "select select-bordered select-sm" %>
+              </div>
+              <%= f.submit "Save", class: "btn btn-primary btn-sm" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Technical Details</h3>
+          <div class="space-y-3">
+            <div>
+              <span class="text-sm font-medium opacity-60">Handler Class</span>
+              <p class="font-mono text-sm"><%= @tool.handler_class || "Not set" %></p>
+            </div>
+            <div>
+              <span class="text-sm font-medium opacity-60">Input Schema</span>
+              <% if @tool.input_schema.present? && @tool.input_schema != {} %>
+                <pre class="bg-base-200 p-3 rounded text-xs overflow-auto max-h-40"><%= JSON.pretty_generate(@tool.input_schema) %></pre>
+              <% else %>
+                <p class="text-sm opacity-60">No schema defined</p>
+              <% end %>
+            </div>
+            <div>
+              <span class="text-sm font-medium opacity-60">Output Schema</span>
+              <% if @tool.output_schema.present? && @tool.output_schema != {} %>
+                <pre class="bg-base-200 p-3 rounded text-xs overflow-auto max-h-40"><%= JSON.pretty_generate(@tool.output_schema) %></pre>
+              <% else %>
+                <p class="text-sm opacity-60">No schema defined</p>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agents Using This Tool -->
+      <div class="card bg-base-100 shadow lg:col-span-2">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Agents Using This Tool (<%= @agents_using.count %>)</h3>
+          <% if @agents_using.any? %>
+            <div class="flex flex-wrap gap-2">
+              <% @agents_using.each do |agent| %>
+                <%= link_to admin_agent_path(agent), class: "badge badge-primary badge-lg gap-1" do %>
+                  <i class="fas fa-robot"></i> <%= agent.name %>
+                <% end %>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="opacity-60">No agents are using this tool.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credentials Tab -->
+  <div data-toggle-target="panel" data-panel="credentials" class="hidden">
+    <div class="card bg-base-100 shadow mb-6">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Add Credential</h3>
+        <%= form_with(url: admin_tool_definition_tool_credentials_path(@tool), method: :post, class: "flex flex-wrap gap-3 items-end") do |f| %>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Name</span></label>
+            <input type="text" name="tool_credential[name]" class="input input-bordered input-sm" placeholder="e.g. api_key">
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Type</span></label>
+            <select name="tool_credential[credential_type]" class="select select-bordered select-sm">
+              <% ToolCredential::CREDENTIAL_TYPES.each do |t| %>
+                <option value="<%= t %>"><%= t.titleize %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Value</span></label>
+            <input type="password" name="tool_credential[encrypted_value]" class="input input-bordered input-sm" placeholder="Secret value">
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus mr-1"></i> Add
+          </button>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto bg-base-100 rounded-box shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Status</th>
+            <th>Expires</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @credentials.each do |cred| %>
+            <tr>
+              <td class="font-medium"><%= cred.name %></td>
+              <td><span class="badge badge-outline badge-sm"><%= cred.credential_type %></span></td>
+              <td class="font-mono text-sm"><%= cred.masked_value %></td>
+              <td><span class="badge badge-<%= cred.status == 'active' ? 'success' : 'error' %> badge-sm"><%= cred.status %></span></td>
+              <td class="text-sm"><%= cred.expires_at ? local_time(cred.expires_at) : "Never" %></td>
+              <td>
+                <%= button_to admin_tool_definition_tool_credential_path(@tool, cred), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Delete this credential?" } do %>
+                  <i class="fas fa-trash"></i>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      <% if @credentials.empty? %>
+        <div class="text-center py-8 opacity-60">
+          <p>No credentials configured.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Usage Tab -->
+  <div data-toggle-target="panel" data-panel="usage" class="hidden">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Usage Statistics</h3>
+        <div class="stat">
+          <div class="stat-title">Total Executions</div>
+          <div class="stat-value"><%= @usage_count %></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Versions Tab -->
+  <div data-toggle-target="panel" data-panel="versions" class="hidden">
+    <div class="overflow-x-auto bg-base-100 rounded-box shadow">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Version</th>
+            <th>Description</th>
+            <th>Change Summary</th>
+            <th>By</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @versions.each do |v| %>
+            <tr>
+              <td><span class="badge badge-outline">v<%= v.version_number %></span></td>
+              <td class="text-sm"><%= v.description&.truncate(60) %></td>
+              <td><%= v.change_summary || "—" %></td>
+              <td><%= v.created_by&.name || "System" %></td>
+              <td class="text-sm"><%= local_time(v.created_at, "short-datetime") %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+      <% if @versions.empty? %>
+        <div class="text-center py-8 opacity-60">
+          <p>No version history.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

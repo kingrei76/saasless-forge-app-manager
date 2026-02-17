@@ -1,0 +1,102 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold"><%= @alert.title %></h2>
+    <p class="text-sm opacity-60">Alert #<%= @alert.id %></p>
+  </div>
+  <div class="flex gap-2">
+    <% if @alert.status == "open" %>
+      <div class="tooltip tooltip-bottom" data-tip="Mark as seen. No external action is taken.">
+        <%= button_to acknowledge_admin_agent_alert_path(@alert), method: :post, class: "btn btn-sm btn-warning" do %>
+          <i class="fas fa-eye mr-1"></i> Acknowledge
+        <% end %>
+      </div>
+    <% end %>
+    <% if @alert.status.in?(%w[open acknowledged]) %>
+      <div class="tooltip tooltip-bottom" data-tip="Mark as resolved. No external action is taken.">
+        <%= button_to resolve_admin_agent_alert_path(@alert), method: :post, class: "btn btn-sm btn-success" do %>
+          <i class="fas fa-check mr-1"></i> Resolve
+        <% end %>
+      </div>
+      <div class="tooltip tooltip-bottom" data-tip="Hide this alert. No external action is taken.">
+        <%= button_to dismiss_admin_agent_alert_path(@alert), method: :post, class: "btn btn-sm btn-ghost" do %>
+          <i class="fas fa-times mr-1"></i> Dismiss
+        <% end %>
+      </div>
+    <% end %>
+    <%= link_to admin_agent_alerts_path, class: "btn btn-ghost btn-sm" do %>
+      <i class="fas fa-arrow-left mr-1"></i> Back
+    <% end %>
+  </div>
+</div>
+
+<% if @alert.alert_type == "approval_needed" %>
+  <div class="alert alert-info mb-6">
+    <i class="fas fa-info-circle"></i>
+    <span>To approve or reject this action, use the Agent Builder chat panel on the <% if @alert.agent %><%= link_to "agent's page", admin_agent_path(@alert.agent), class: "link link-primary font-medium" %><% else %>agent's page<% end %>. These buttons only update the alert's tracking status.</span>
+  </div>
+<% end %>
+
+<div class="flex gap-3 mb-6">
+  <span class="badge badge-<%= @alert.severity_badge_color %> badge-lg"><%= @alert.severity.capitalize %></span>
+  <span class="badge badge-outline badge-lg"><%= @alert.alert_type.titleize %></span>
+  <span class="badge badge-<%= @alert.status == 'open' ? 'warning' : 'ghost' %> badge-lg"><%= @alert.status.capitalize %></span>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Details</h3>
+      <% if @alert.description.present? %>
+        <p><%= @alert.description %></p>
+      <% end %>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <div>
+          <span class="text-sm font-medium opacity-60">Agent</span>
+          <p>
+            <% if @alert.agent %>
+              <%= link_to @alert.agent.name, admin_agent_path(@alert.agent), class: "link link-primary" %>
+            <% else %>
+              N/A
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="text-sm font-medium opacity-60">Execution</span>
+          <p>
+            <% if @alert.agent_execution %>
+              <%= link_to "##{@alert.agent_execution_id}", admin_agent_execution_path(@alert.agent_execution), class: "link link-primary" %>
+            <% else %>
+              N/A
+            <% end %>
+          </p>
+        </div>
+        <div>
+          <span class="text-sm font-medium opacity-60">Created</span>
+          <p><%= local_time(@alert.created_at, "short-datetime") %></p>
+        </div>
+        <div>
+          <span class="text-sm font-medium opacity-60">Resolved</span>
+          <p>
+            <% if @alert.resolved_at %>
+              <%= local_time(@alert.resolved_at, "short-datetime") %>
+              <% if @alert.resolved_by %>
+                by <%= @alert.resolved_by.name %>
+              <% end %>
+            <% else %>
+              Not yet
+            <% end %>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <% if @alert.metadata.present? && @alert.metadata != {} %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Metadata</h3>
+        <pre class="bg-base-200 p-3 rounded text-sm overflow-auto max-h-48"><%= JSON.pretty_generate(@alert.metadata) %></pre>
+      </div>
+    </div>
+  <% end %>
+</div>

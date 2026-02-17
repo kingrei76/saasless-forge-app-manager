@@ -32,10 +32,22 @@ class ApplicationController < ActionController::Base
             params['api_token']
 
     if token.present?
+      # Check user API token first
       user = User.find_by(api_token: token)
       if user
         sign_in(user, store: false)
         return
+      end
+
+      # Check service-to-service token (LangGraph agent tools calling Rails APIs)
+      service_token = Setting[:langgraph_auth_token] || ENV["LANGGRAPH_AUTH_TOKEN"]
+      if service_token.present? && ActiveSupport::SecurityUtils.secure_compare(token, service_token)
+        # Sign in as the admin user so agent operations have proper user context
+        admin = User.where(admin: true).order(:id).first
+        if admin
+          sign_in(admin, store: false)
+          return
+        end
       end
     end
 

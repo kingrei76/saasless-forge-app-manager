@@ -1,0 +1,91 @@
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  <!-- Agent Details -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Agent Details</h3>
+      <div class="space-y-3">
+        <div>
+          <span class="text-sm font-medium opacity-60">Description</span>
+          <p><%= @agent.description.present? ? @agent.description : "No description" %></p>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <span class="text-sm font-medium opacity-60">Model</span>
+            <p><%= @agent.ai_model&.display_label || @agent.llm_model || "Not set" %></p>
+          </div>
+          <div>
+            <span class="text-sm font-medium opacity-60">Temperature</span>
+            <p><%= @agent.temperature %></p>
+          </div>
+          <div>
+            <span class="text-sm font-medium opacity-60">Max Iterations</span>
+            <p><%= @agent.max_iterations %></p>
+          </div>
+          <div>
+            <span class="text-sm font-medium opacity-60">Service Provider</span>
+            <p><%= @agent.service_provider&.name || "None" %></p>
+          </div>
+          <div>
+            <span class="text-sm font-medium opacity-60">Created By</span>
+            <p><%= @agent.created_by&.name || "System" %></p>
+          </div>
+          <div>
+            <span class="text-sm font-medium opacity-60">Created</span>
+            <p><%= local_time(@agent.created_at) %></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- System Prompt -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">System Prompt</h3>
+      <% if @agent.system_prompt.present? %>
+        <pre class="bg-base-200 p-4 rounded-lg text-sm overflow-auto max-h-64 whitespace-pre-wrap"><%= @agent.system_prompt %></pre>
+      <% else %>
+        <p class="opacity-60">No system prompt configured.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Quick Execute -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Quick Execute</h3>
+      <%= form_with(url: execute_admin_agent_path(@agent), method: :post) do |f| %>
+        <div class="form-control mb-3">
+          <label class="label"><span class="label-text">Input Data (JSON)</span></label>
+          <textarea name="input_data" class="textarea textarea-bordered font-mono text-sm h-24" placeholder='{"message": "Hello"}'></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm" <%= "disabled" unless @agent.status == "active" %>>
+          <i class="fas fa-play mr-1"></i> Execute (<%= @agent.mode %>)
+        </button>
+        <% unless @agent.status == "active" %>
+          <span class="text-xs opacity-60 ml-2">Agent must be active to execute</span>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Recent Alerts -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body">
+      <h3 class="card-title text-lg">Recent Alerts</h3>
+      <% if @alerts.any? %>
+        <div class="space-y-2">
+          <% @alerts.each do |alert| %>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="badge badge-<%= alert.severity_badge_color %> badge-xs"></span>
+              <span class="flex-1"><%= alert.title %></span>
+              <span class="opacity-60"><%= time_ago_in_words(alert.created_at) %> ago</span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="opacity-60">No alerts.</p>
+      <% end %>
+    </div>
+  </div>
+</div>

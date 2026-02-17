@@ -1,0 +1,45 @@
+<div class="flex justify-between items-center mb-4">
+  <h3 class="text-lg font-bold">Agent Memory</h3>
+  <% if @memories.any? %>
+    <%= button_to purge_expired_admin_agent_agent_memories_path(@agent), method: :delete, class: "btn btn-ghost btn-sm", data: { turbo_confirm: "Purge all expired memories?" } do %>
+      <i class="fas fa-broom mr-1"></i> Purge Expired
+    <% end %>
+  <% end %>
+</div>
+
+<div class="space-y-3">
+  <% @memories.each do |memory| %>
+    <div class="card bg-base-100 shadow">
+      <div class="card-body py-3">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <div class="flex gap-2 items-center mb-1">
+              <span class="badge badge-outline badge-sm"><%= memory.memory_type %></span>
+              <% if memory.key.present? %>
+                <code class="text-xs bg-base-200 px-1 rounded"><%= memory.key %></code>
+              <% end %>
+              <% if memory.relevance_score.present? %>
+                <span class="text-xs opacity-60">relevance: <%= memory.relevance_score %></span>
+              <% end %>
+            </div>
+            <p class="text-sm"><%= memory.content.truncate(200) %></p>
+            <p class="text-xs opacity-50 mt-1">
+              <%= time_ago_in_words(memory.created_at) %> ago
+              <% if memory.expires_at %>
+                &bull; expires <%= memory.expires_at > Time.current ? "in #{time_ago_in_words(memory.expires_at)}" : "expired" %>
+              <% end %>
+            </p>
+          </div>
+          <%= button_to admin_agent_agent_memory_path(@agent, memory), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Delete this memory?" } do %>
+            <i class="fas fa-trash"></i>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+  <% if @memories.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No memories stored.</p>
+    </div>
+  <% end %>
+</div>

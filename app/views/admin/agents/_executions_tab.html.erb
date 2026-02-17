@@ -1,0 +1,41 @@
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Status</th>
+        <th>Mode</th>
+        <th>Steps</th>
+        <th>Tokens</th>
+        <th>Cost</th>
+        <th>Duration</th>
+        <th>Started</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @executions.each do |exec| %>
+        <tr>
+          <td>
+            <%= link_to "##{exec.id}", admin_agent_execution_path(exec), class: "link link-primary" %>
+          </td>
+          <td><span class="badge badge-<%= exec.status_badge_color %> badge-sm"><%= exec.status %></span></td>
+          <td>
+            <span class="badge badge-<%= exec.mode == 'test' ? 'warning' : 'success' %> badge-outline badge-sm">
+              <%= exec.mode %>
+            </span>
+          </td>
+          <td><%= exec.steps.count %></td>
+          <td><%= number_with_delimiter(exec.total_tokens) %></td>
+          <td>$<%= number_with_precision(exec.total_cost, precision: 4) %></td>
+          <td><%= exec.duration_display %></td>
+          <td class="text-sm"><%= local_time(exec.created_at, "compact-datetime") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @executions.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No executions yet.</p>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,115 @@
+<div class="flex justify-between items-center mb-6">
+  <div>
+    <h2 class="text-2xl font-bold"><%= @agent.name %></h2>
+    <p class="text-sm opacity-60"><%= @agent.slug %> &bull; v<%= @agent.version %></p>
+  </div>
+  <div class="flex gap-2">
+    <!-- Mode Toggle -->
+    <%= button_to toggle_mode_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-outline" do %>
+      <i class="fas fa-<%= @agent.test_mode? ? 'flask' : 'broadcast-tower' %>"></i>
+      <%= @agent.mode.capitalize %>
+    <% end %>
+
+    <!-- Status Actions -->
+    <% case @agent.status %>
+    <% when "draft" %>
+      <%= button_to activate_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-success" do %>
+        <i class="fas fa-play mr-1"></i> Activate
+      <% end %>
+    <% when "active" %>
+      <%= button_to pause_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-warning" do %>
+        <i class="fas fa-pause mr-1"></i> Pause
+      <% end %>
+    <% when "paused" %>
+      <%= button_to activate_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-success" do %>
+        <i class="fas fa-play mr-1"></i> Resume
+      <% end %>
+    <% end %>
+
+    <% unless @agent.status == "archived" %>
+      <%= button_to archive_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-ghost", data: { turbo_confirm: "Archive this agent?" } do %>
+        <i class="fas fa-archive"></i>
+      <% end %>
+    <% end %>
+
+    <%= link_to edit_admin_agent_path(@agent), class: "btn btn-sm btn-ghost" do %>
+      <i class="fas fa-edit"></i>
+    <% end %>
+
+    <%= button_to duplicate_admin_agent_path(@agent), method: :post, class: "btn btn-sm btn-ghost" do %>
+      <i class="fas fa-copy"></i>
+    <% end %>
+
+    <%= button_to admin_agent_path(@agent), method: :delete,
+        class: "btn btn-sm btn-ghost text-error",
+        data: { turbo_confirm: "Delete this agent? This cannot be undone." } do %>
+      <i class="fas fa-trash"></i>
+    <% end %>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div class="flex gap-3 mb-6">
+  <span class="badge badge-<%= @agent.status_badge_color %> badge-lg"><%= @agent.status.capitalize %></span>
+  <span class="badge badge-<%= @agent.category_badge_color %> badge-lg"><%= @agent.category.capitalize %></span>
+  <span class="badge badge-<%= @agent.test_mode? ? 'warning' : 'success' %> badge-outline badge-lg">
+    <i class="fas fa-<%= @agent.test_mode? ? 'flask' : 'broadcast-tower' %> mr-1"></i> <%= @agent.mode.capitalize %>
+  </span>
+  <% if @agent.llm_model.present? %>
+    <span class="badge badge-outline badge-lg"><%= @agent.llm_model %></span>
+  <% end %>
+</div>
+
+<!-- Tabs -->
+<div data-controller="toggle">
+  <div class="tabs tabs-bordered mb-6">
+    <a class="tab tab-active" data-toggle-target="tab" data-tab="overview" data-action="click->toggle#show">Overview</a>
+    <a class="tab" data-toggle-target="tab" data-tab="tools" data-action="click->toggle#show">Tools (<%= @agent_tools.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="handoffs" data-action="click->toggle#show">Handoffs (<%= @handoffs.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="goals" data-action="click->toggle#show">Goals (<%= @goals.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="triggers" data-action="click->toggle#show">Triggers (<%= @triggers.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="memory" data-action="click->toggle#show">Memory (<%= @memories.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="versions" data-action="click->toggle#show">Versions (<%= @versions.count %>)</a>
+    <a class="tab" data-toggle-target="tab" data-tab="executions" data-action="click->toggle#show">Executions (<%= @executions.count %>)</a>
+  </div>
+
+  <!-- Overview Tab -->
+  <div data-toggle-target="panel" data-panel="overview">
+    <%= render "overview_tab" %>
+  </div>
+
+  <!-- Tools Tab -->
+  <div data-toggle-target="panel" data-panel="tools" class="hidden">
+    <%= render "tools_tab" %>
+  </div>
+
+  <!-- Handoffs Tab -->
+  <div data-toggle-target="panel" data-panel="handoffs" class="hidden">
+    <%= render "handoffs_tab" %>
+  </div>
+
+  <!-- Goals Tab -->
+  <div data-toggle-target="panel" data-panel="goals" class="hidden">
+    <%= render "goals_tab" %>
+  </div>
+
+  <!-- Triggers Tab -->
+  <div data-toggle-target="panel" data-panel="triggers" class="hidden">
+    <%= render "triggers_tab" %>
+  </div>
+
+  <!-- Memory Tab -->
+  <div data-toggle-target="panel" data-panel="memory" class="hidden">
+    <%= render "memory_tab" %>
+  </div>
+
+  <!-- Versions Tab -->
+  <div data-toggle-target="panel" data-panel="versions" class="hidden">
+    <%= render "versions_tab" %>
+  </div>
+
+  <!-- Executions Tab -->
+  <div data-toggle-target="panel" data-panel="executions" class="hidden">
+    <%= render "executions_tab" %>
+  </div>
+</div>

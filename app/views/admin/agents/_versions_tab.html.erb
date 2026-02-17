@@ -1,0 +1,27 @@
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Change Summary</th>
+        <th>Created By</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @versions.each do |version| %>
+        <tr>
+          <td><span class="badge badge-outline">v<%= version.version_number %></span></td>
+          <td><%= version.change_summary || "—" %></td>
+          <td><%= version.created_by&.name || "System" %></td>
+          <td class="text-sm"><%= local_time(version.created_at, "short-datetime") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @versions.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No version history.</p>
+    </div>
+  <% end %>
+</div>

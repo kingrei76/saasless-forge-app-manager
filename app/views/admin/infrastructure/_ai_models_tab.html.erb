@@ -1,0 +1,151 @@
+<%# AI Models Registry %>
+<div class="space-y-6">
+  <%# Add Model Form %>
+  <div class="collapse collapse-arrow bg-base-200">
+    <input type="checkbox" />
+    <div class="collapse-title font-medium">
+      <i class="fas fa-plus mr-2"></i> Add Model
+    </div>
+    <div class="collapse-content">
+      <%= form_with model: AiModel.new, url: admin_infrastructure_ai_models_path, class: "space-y-4 pt-2" do |f| %>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Provider *</span></label>
+            <%= f.collection_select :service_provider_id, ServiceProvider.active.order(:name), :id, :name,
+                { prompt: "Select provider..." }, class: "select select-bordered select-sm" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Display Name *</span></label>
+            <%= f.text_field :name, class: "input input-bordered input-sm", placeholder: "e.g. GPT-4o" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Model ID *</span></label>
+            <%= f.text_field :model_id, class: "input input-bordered input-sm", placeholder: "e.g. gpt-4o" %>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Category</span></label>
+            <%= f.select :category, AiModel::CATEGORIES.map { |c| [c.capitalize, c] }, {}, class: "select select-bordered select-sm" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Context Window</span></label>
+            <%= f.number_field :context_window, class: "input input-bordered input-sm", placeholder: "128000" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Max Output</span></label>
+            <%= f.number_field :max_output_tokens, class: "input input-bordered input-sm", placeholder: "16384" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Input $/1M</span></label>
+            <%= f.number_field :input_price_per_million, class: "input input-bordered input-sm", step: 0.01, placeholder: "2.50" %>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text font-medium">Output $/1M</span></label>
+            <%= f.number_field :output_price_per_million, class: "input input-bordered input-sm", step: 0.01, placeholder: "10.00" %>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <%= f.submit "Add Model", class: "btn btn-primary btn-sm" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# Models Table %>
+  <% llm_providers = ServiceProvider.active.where(category: "llm").includes(:ai_models).order(:name) %>
+
+  <% if llm_providers.any? %>
+    <% llm_providers.each do |provider| %>
+      <div class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-lg">
+              <i class="fas fa-plug mr-2 opacity-50"></i>
+              <%= provider.name %>
+              <span class="badge badge-sm badge-ghost ml-2"><%= provider.slug %></span>
+            </h3>
+            <span class="badge badge-sm <%= provider.proxy_enabled? ? 'badge-success' : 'badge-ghost' %>">
+              <%= provider.proxy_enabled? ? 'Proxy enabled' : 'Proxy disabled' %>
+            </span>
+          </div>
+
+          <% models = provider.ai_models.order(:sort_order, :name) %>
+          <% if models.any? %>
+            <div class="overflow-x-auto">
+              <table class="table table-sm table-zebra">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Model ID</th>
+                    <th>Category</th>
+                    <th>Context</th>
+                    <th>Max Output</th>
+                    <th class="text-right">Input $/1M</th>
+                    <th class="text-right">Output $/1M</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% models.each do |model| %>
+                    <tr id="ai_model_<%= model.id %>">
+                      <td class="font-medium"><%= model.name %></td>
+                      <td><code class="text-xs"><%= model.model_id %></code></td>
+                      <td><span class="badge badge-xs badge-outline"><%= model.category %></span></td>
+                      <td class="text-sm"><%= model.context_window ? number_with_delimiter(model.context_window) : '-' %></td>
+                      <td class="text-sm"><%= model.max_output_tokens ? number_with_delimiter(model.max_output_tokens) : '-' %></td>
+                      <td class="text-right text-sm"><%= model.input_price_per_million ? number_to_currency(model.input_price_per_million) : '-' %></td>
+                      <td class="text-right text-sm"><%= model.output_price_per_million ? number_to_currency(model.output_price_per_million) : '-' %></td>
+                      <td>
+                        <span class="badge badge-xs <%= model.status == 'active' ? 'badge-success' : model.status == 'deprecated' ? 'badge-warning' : 'badge-error' %>">
+                          <%= model.status %>
+                        </span>
+                      </td>
+                      <td class="text-right">
+                        <div class="dropdown dropdown-end">
+                          <label tabindex="0" class="btn btn-ghost btn-xs"><i class="fas fa-ellipsis-v"></i></label>
+                          <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                            <li>
+                              <%= button_to "Set Active", admin_infrastructure_ai_model_path(model),
+                                  method: :patch, class: "text-left",
+                                  params: { ai_model: { status: "active" } } %>
+                            </li>
+                            <li>
+                              <%= button_to "Set Deprecated", admin_infrastructure_ai_model_path(model),
+                                  method: :patch, class: "text-left",
+                                  params: { ai_model: { status: "deprecated" } } %>
+                            </li>
+                            <li>
+                              <%= button_to "Disable", admin_infrastructure_ai_model_path(model),
+                                  method: :patch, class: "text-left",
+                                  params: { ai_model: { status: "disabled" } } %>
+                            </li>
+                            <li class="border-t mt-1 pt-1">
+                              <%= button_to "Delete", admin_infrastructure_ai_model_path(model),
+                                  method: :delete, class: "text-left text-error",
+                                  data: { turbo_confirm: "Remove #{model.name}?" } %>
+                            </li>
+                          </ul>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% else %>
+            <p class="text-sm opacity-50 italic">No models registered for this provider. Use the form above to add models.</p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% else %>
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle"></i>
+      <span>No LLM providers configured. Add a service provider with category "llm" in the Service Providers tab first.</span>
+    </div>
+  <% end %>
+</div>

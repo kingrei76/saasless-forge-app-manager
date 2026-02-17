@@ -1,0 +1,75 @@
+<!-- Add Tool Form -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-lg">Add Tool</h3>
+    <% if @available_tools.any? %>
+      <%= form_with(url: admin_agent_agent_tools_path(@agent), method: :post, class: "flex gap-3 items-end") do |f| %>
+        <div class="form-control flex-1">
+          <label class="label"><span class="label-text">Tool</span></label>
+          <%= f.select :tool_definition_id, @available_tools.map { |t| ["#{t.name} (#{t.category})", t.id] }, {}, class: "select select-bordered select-sm", name: "agent_tool[tool_definition_id]" %>
+        </div>
+        <div class="form-control">
+          <label class="label cursor-pointer gap-2">
+            <span class="label-text">Requires Approval</span>
+            <input type="checkbox" name="agent_tool[requires_approval]" value="1" class="checkbox checkbox-sm">
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus mr-1"></i> Add
+        </button>
+      <% end %>
+    <% else %>
+      <p class="opacity-60">All available tools are already assigned. <%= link_to "Register new tools", admin_tool_definitions_path, class: "link link-primary" %> first.</p>
+    <% end %>
+  </div>
+</div>
+
+<!-- Assigned Tools -->
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Tool</th>
+        <th>Category</th>
+        <th>Risk</th>
+        <th>Enabled</th>
+        <th>Approval</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @agent_tools.each do |at| %>
+        <tr>
+          <td>
+            <%= link_to at.tool_definition.name, admin_tool_definition_path(at.tool_definition), class: "link link-primary font-medium" %>
+            <br><span class="text-xs opacity-60"><%= at.tool_definition.description&.truncate(60) %></span>
+          </td>
+          <td><span class="badge badge-outline badge-sm"><%= at.tool_definition.category %></span></td>
+          <td><span class="badge badge-<%= at.tool_definition.risk_badge_color %> badge-sm"><%= at.tool_definition.risk_level %></span></td>
+          <td>
+            <%= button_to toggle_admin_agent_agent_tool_path(@agent, at), method: :patch, class: "swap" do %>
+              <span class="badge badge-<%= at.enabled? ? 'success' : 'ghost' %> badge-sm cursor-pointer">
+                <%= at.enabled? ? "Enabled" : "Disabled" %>
+              </span>
+            <% end %>
+          </td>
+          <td>
+            <span class="badge badge-<%= at.requires_approval? ? 'warning' : 'ghost' %> badge-sm">
+              <%= at.requires_approval? ? "Required" : "Auto" %>
+            </span>
+          </td>
+          <td>
+            <%= button_to admin_agent_agent_tool_path(@agent, at), method: :delete, class: "btn btn-ghost btn-xs text-error", data: { turbo_confirm: "Remove this tool?" } do %>
+              <i class="fas fa-trash"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @agent_tools.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No tools assigned yet.</p>
+    </div>
+  <% end %>
+</div>

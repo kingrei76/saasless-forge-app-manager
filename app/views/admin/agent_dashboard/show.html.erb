@@ -1,0 +1,225 @@
+<div class="flex justify-between items-center mb-6">
+  <h2 class="text-2xl font-bold">Agent Dashboard</h2>
+</div>
+
+<!-- Overview Stats -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Active Agents</div>
+    <div class="stat-value text-lg text-success"><%= @stats[:active_agents] %></div>
+    <div class="stat-desc"><%= @stats[:total_agents] %> total</div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Executions Today</div>
+    <div class="stat-value text-lg"><%= @stats[:executions_today] %></div>
+    <div class="stat-desc"><%= @stats[:executions_this_week] %> this week</div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Success Rate</div>
+    <div class="stat-value text-lg"><%= @stats[:success_rate] %>%</div>
+    <div class="stat-desc">Last 30 days</div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Tokens Today</div>
+    <div class="stat-value text-lg"><%= number_with_delimiter(@stats[:total_tokens_today]) %></div>
+    <div class="stat-desc">$<%= number_with_precision(@stats[:total_cost_today], precision: 2) %></div>
+  </div>
+  <div class="stat bg-base-100 rounded-box shadow">
+    <div class="stat-title">Open Alerts</div>
+    <div class="stat-value text-lg text-error"><%= @stats[:open_alerts] %></div>
+    <div class="stat-desc"><%= link_to "View all", admin_agent_alerts_path, class: "link" %></div>
+  </div>
+</div>
+
+<div data-controller="toggle">
+  <div class="tabs tabs-bordered mb-6">
+    <a class="tab tab-active" data-toggle-target="tab" data-tab="overview" data-action="click->toggle#show">Overview</a>
+    <a class="tab" data-toggle-target="tab" data-tab="costs" data-action="click->toggle#show">Costs</a>
+    <a class="tab" data-toggle-target="tab" data-tab="tools" data-action="click->toggle#show">Tools</a>
+    <a class="tab" data-toggle-target="tab" data-tab="agents" data-action="click->toggle#show">Agents</a>
+  </div>
+
+  <!-- Overview Tab -->
+  <div data-toggle-target="panel" data-panel="overview">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Daily Executions Chart -->
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Daily Executions (30 days)</h3>
+          <div data-controller="chart"
+               data-chart-type-value="bar"
+               data-chart-labels-value="<%= @daily_executions.keys.last(30).to_json %>"
+               data-chart-data-value="<%= @daily_executions.values.last(30).to_json %>"
+               data-chart-label-value="Executions">
+            <canvas data-chart-target="canvas" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Executions by Status -->
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Executions by Status</h3>
+          <div class="space-y-2 mt-2">
+            <% @executions_by_status.each do |status, count| %>
+              <div class="flex justify-between items-center">
+                <span class="badge badge-<%= AgentExecution.new(status: status).status_badge_color %>"><%= status %></span>
+                <span class="font-mono"><%= count %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Executions -->
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Active Executions</h3>
+          <% if @active_executions.any? %>
+            <div class="space-y-2">
+              <% @active_executions.each do |exec| %>
+                <div class="flex justify-between items-center text-sm">
+                  <div>
+                    <%= link_to "##{exec.id}", admin_agent_execution_path(exec), class: "link link-primary" %>
+                    <span class="opacity-60"><%= exec.agent.name %></span>
+                  </div>
+                  <span class="badge badge-<%= exec.status_badge_color %> badge-sm"><%= exec.status %></span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="opacity-60">No active executions.</p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Recent Alerts -->
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Recent Alerts</h3>
+          <% if @recent_alerts.any? %>
+            <div class="space-y-2">
+              <% @recent_alerts.each do |alert| %>
+                <div class="flex justify-between items-center text-sm">
+                  <div class="flex gap-2 items-center">
+                    <span class="badge badge-<%= alert.severity_badge_color %> badge-xs"></span>
+                    <%= link_to alert.title, admin_agent_alert_path(alert), class: "link" %>
+                  </div>
+                  <span class="text-xs opacity-60"><%= time_ago_in_words(alert.created_at) %></span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="opacity-60">No recent alerts.</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Costs Tab -->
+  <div data-toggle-target="panel" data-panel="costs" class="hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Daily Cost (30 days)</h3>
+          <div data-controller="chart"
+               data-chart-type-value="line"
+               data-chart-labels-value="<%= @cost_by_day.keys.last(30).to_json %>"
+               data-chart-data-value="<%= @cost_by_day.values.last(30).map(&:to_f).to_json %>"
+               data-chart-label-value="Cost ($)">
+            <canvas data-chart-target="canvas" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Daily Tokens (30 days)</h3>
+          <div data-controller="chart"
+               data-chart-type-value="bar"
+               data-chart-labels-value="<%= @tokens_by_day.keys.last(30).to_json %>"
+               data-chart-data-value="<%= @tokens_by_day.values.last(30).to_json %>"
+               data-chart-label-value="Tokens">
+            <canvas data-chart-target="canvas" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card bg-base-100 shadow lg:col-span-2">
+        <div class="card-body">
+          <h3 class="card-title text-lg">Cost by Agent</h3>
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead><tr><th>Agent</th><th>Total Cost</th></tr></thead>
+              <tbody>
+                <% @cost_by_agent.sort_by { |_, v| -v }.each do |name, cost| %>
+                  <tr>
+                    <td><%= name %></td>
+                    <td>$<%= number_with_precision(cost, precision: 4) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tools Tab -->
+  <div data-toggle-target="panel" data-panel="tools" class="hidden">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Tool Usage (30 days)</h3>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tool</th>
+                <th>Usage Count</th>
+                <th>Errors</th>
+                <th>Error Rate</th>
+                <th>Avg Duration</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @tool_usage.each do |tu| %>
+                <tr>
+                  <td class="font-medium"><%= tu.name %></td>
+                  <td><%= tu.usage_count %></td>
+                  <td><%= tu.error_count %></td>
+                  <td>
+                    <% rate = tu.usage_count.to_i > 0 ? (tu.error_count.to_f / tu.usage_count * 100).round(1) : 0 %>
+                    <span class="<%= rate > 10 ? 'text-error' : '' %>"><%= rate %>%</span>
+                  </td>
+                  <td><%= tu.avg_duration_ms&.round(0) || "—" %>ms</td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agents Tab -->
+  <div data-toggle-target="panel" data-panel="agents" class="hidden">
+    <div class="card bg-base-100 shadow">
+      <div class="card-body">
+        <h3 class="card-title text-lg">Top Agents by Executions</h3>
+        <div class="overflow-x-auto">
+          <table class="table">
+            <thead><tr><th>Agent</th><th>Executions</th></tr></thead>
+            <tbody>
+              <% @executions_by_agent.each do |name, count| %>
+                <tr>
+                  <td class="font-medium"><%= name %></td>
+                  <td><%= count %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

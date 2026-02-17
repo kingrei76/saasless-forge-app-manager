@@ -1,0 +1,270 @@
+<!-- Add Trigger Form -->
+<div class="card bg-base-100 shadow mb-6">
+  <div class="card-body">
+    <h3 class="card-title text-lg">Add Trigger</h3>
+    <%= form_with(url: admin_agent_agent_triggers_path(@agent), method: :post, data: { controller: "trigger-form", trigger_form_schema_url_value: "/api/trigger_schemas" }) do |f| %>
+      <div class="space-y-4">
+        <!-- Row 1: Type + Description -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Type *</span></label>
+            <select name="agent_trigger[trigger_type]" class="select select-bordered select-sm"
+                    data-trigger-form-target="typeSelect" data-action="trigger-form#toggleSections">
+              <% AgentTrigger::TRIGGER_TYPES.each do |t| %>
+                <option value="<%= t %>"><%= t.titleize %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="form-control md:col-span-2">
+            <label class="label"><span class="label-text">Description</span></label>
+            <input type="text" name="agent_trigger[description]" class="input input-bordered input-sm" placeholder="What does this trigger do?">
+          </div>
+        </div>
+
+        <!-- Help Panel (changes based on trigger type) -->
+        <div data-trigger-form-target="helpPanel" class="alert alert-info text-sm py-2 hidden">
+          <i class="fas fa-info-circle"></i>
+          <span data-trigger-form-target="helpContent"></span>
+        </div>
+
+        <!-- Schedule Section -->
+        <div data-trigger-form-target="scheduleSection" class="hidden space-y-3">
+          <div class="divider text-xs opacity-60">Schedule Settings</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="form-control">
+              <label class="label"><span class="label-text">Schedule Preset</span></label>
+              <select name="agent_trigger[schedule]" class="select select-bordered select-sm"
+                      data-trigger-form-target="schedulePreset" data-action="trigger-form#schedulePresetChanged">
+                <% AgentTrigger::SCHEDULE_PRESETS.each do |key, cron| %>
+                  <option value="<%= key %>"><%= key.titleize %> (<%= cron %>)</option>
+                <% end %>
+                <option value="custom">Custom Cron Expression</option>
+              </select>
+            </div>
+            <div class="form-control hidden" data-trigger-form-target="scheduleCron">
+              <label class="label"><span class="label-text">Custom Cron</span></label>
+              <input type="text" name="agent_trigger[schedule]" class="input input-bordered input-sm font-mono" placeholder="* * * * *">
+              <label class="label"><span class="label-text-alt">min hour day month dow</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Section -->
+        <div data-trigger-form-target="dataSection" class="hidden space-y-3">
+          <div class="divider text-xs opacity-60">Data Polling Settings</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="form-control">
+              <label class="label"><span class="label-text">Tool to Poll *</span></label>
+              <select name="agent_trigger[tool_definition_id]" class="select select-bordered select-sm"
+                      data-trigger-form-target="toolSelect"
+                      data-action="change->trigger-form#onToolChanged">
+                <option value="">Select a tool...</option>
+                <% ToolDefinition.active.order(:name).each do |td| %>
+                  <option value="<%= td.id %>"><%= td.name %> (<%= td.slug %>)</option>
+                <% end %>
+              </select>
+            </div>
+            <div class="form-control">
+              <label class="label"><span class="label-text">Check Interval (minutes)</span></label>
+              <input type="number" name="agent_trigger[check_interval_minutes]" class="input input-bordered input-sm" value="60" min="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Dependency Section -->
+        <div data-trigger-form-target="dependencySection" class="hidden space-y-3">
+          <div class="divider text-xs opacity-60">Dependency Settings</div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Depends On Agent *</span></label>
+            <select name="agent_trigger[depends_on_agent_id]" class="select select-bordered select-sm">
+              <option value="">Select an agent...</option>
+              <% @available_agents&.each do |a| %>
+                <option value="<%= a.id %>"><%= a.name %> (<%= a.status %>)</option>
+              <% end %>
+            </select>
+            <label class="label"><span class="label-text-alt">Fires when this agent completes an execution</span></label>
+          </div>
+        </div>
+
+        <!-- Webhook Section -->
+        <div data-trigger-form-target="webhookSection" class="hidden space-y-3">
+          <div class="divider text-xs opacity-60">Webhook Settings</div>
+          <p class="text-sm opacity-60">
+            A unique webhook URL will be generated after creation. External systems can POST JSON to this URL to fire the trigger.
+          </p>
+        </div>
+
+        <!-- Event Section -->
+        <div data-trigger-form-target="eventSection" class="hidden space-y-3">
+          <div class="divider text-xs opacity-60">Event Settings</div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Event Name *</span></label>
+            <input type="text" name="agent_trigger[event_name]" list="known-events"
+                   class="input input-bordered input-sm" placeholder="e.g. stripe.invoice.paid"
+                   data-trigger-form-target="eventNameInput"
+                   data-action="change->trigger-form#onEventChanged">
+            <datalist id="known-events">
+              <% EventRegistry.all_events.each do |evt| %>
+                <option value="<%= evt.name %>" label="<%= evt.description %>">
+              <% end %>
+            </datalist>
+            <label class="label"><span class="label-text-alt">Select a known event or type a custom event name</span></label>
+          </div>
+        </div>
+
+        <!-- Condition Builder (shared across types) -->
+        <div class="space-y-3">
+          <div class="divider text-xs opacity-60">Conditions (optional)</div>
+          <div class="flex items-center gap-3 mb-2">
+            <label class="label"><span class="label-text text-sm">Match mode:</span></label>
+            <select data-trigger-form-target="matchMode" class="select select-bordered select-xs" data-action="trigger-form#serializeCondition">
+              <option value="all">All rules (AND)</option>
+              <option value="any">Any rule (OR)</option>
+            </select>
+          </div>
+          <div data-trigger-form-target="conditionRows" class="space-y-2">
+            <!-- Condition rows added dynamically -->
+          </div>
+          <button type="button" class="btn btn-ghost btn-xs" data-action="trigger-form#addConditionRow">
+            <i class="fas fa-plus mr-1"></i> Add Condition Rule
+          </button>
+          <input type="hidden" name="agent_trigger[condition]" data-trigger-form-target="conditionField" value="">
+        </div>
+
+        <!-- Shared fields: Cooldown + Input Template -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div class="form-control">
+            <label class="label"><span class="label-text">Cooldown (minutes)</span></label>
+            <input type="number" name="agent_trigger[cooldown_minutes]" class="input input-bordered input-sm" value="0" min="0">
+            <label class="label"><span class="label-text-alt">0 = no cooldown</span></label>
+          </div>
+          <div class="form-control">
+            <label class="label"><span class="label-text">Input Data Template (JSON)</span></label>
+            <textarea name="agent_trigger[input_data_template]" class="textarea textarea-bordered textarea-sm font-mono h-16" placeholder='{"context": "triggered"}'></textarea>
+          </div>
+        </div>
+
+        <div class="form-control">
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="hidden" name="agent_trigger[enabled]" value="0">
+            <input type="checkbox" name="agent_trigger[enabled]" value="1" checked class="checkbox checkbox-sm checkbox-primary">
+            <span class="label-text">Enabled</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus mr-1"></i> Add Trigger
+        </button>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<!-- Triggers List -->
+<div class="overflow-x-auto bg-base-100 rounded-box shadow">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Details</th>
+        <th>Cooldown</th>
+        <th>Last Fired</th>
+        <th>Enabled</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @triggers.each do |trigger| %>
+        <tr>
+          <td>
+            <span class="badge badge-outline badge-sm"><%= trigger.trigger_type %></span>
+          </td>
+          <td class="max-w-xs">
+            <% if trigger.description.present? %>
+              <span class="text-sm"><%= trigger.description %></span>
+            <% else %>
+              <span class="text-sm opacity-40">No description</span>
+            <% end %>
+          </td>
+          <td class="text-sm">
+            <% case trigger.trigger_type %>
+            <% when "schedule" %>
+              <code class="text-xs"><%= trigger.schedule %></code>
+              <% if AgentTrigger::SCHEDULE_PRESETS[trigger.schedule] %>
+                <span class="text-xs opacity-60 ml-1">(<%= AgentTrigger::SCHEDULE_PRESETS[trigger.schedule] %>)</span>
+              <% end %>
+            <% when "data" %>
+              <span>Tool: <strong><%= trigger.tool_definition&.name || "?" %></strong></span>
+              <br><span class="text-xs opacity-60">Every <%= trigger.check_interval_minutes %>m</span>
+              <% if trigger.last_checked_at %>
+                <br><span class="text-xs opacity-60">Checked: <%= time_ago_in_words(trigger.last_checked_at) %> ago</span>
+              <% end %>
+            <% when "dependency" %>
+              <span>After: <strong><%= trigger.depends_on_agent&.name || "?" %></strong></span>
+            <% when "webhook" %>
+              <% if trigger.webhook_url %>
+                <div class="flex items-center gap-1">
+                  <code class="text-xs break-all"><%= trigger.webhook_url %></code>
+                </div>
+              <% end %>
+            <% when "event" %>
+              <code class="text-xs"><%= trigger.event_name || "?" %></code>
+            <% when "manual" %>
+              <span class="opacity-60">On-demand</span>
+            <% end %>
+            <% if trigger.condition.present? && trigger.condition != {} %>
+              <br><span class="badge badge-ghost badge-xs mt-1">
+                <%= trigger.condition["rules"]&.length || 0 %> condition rule(s)
+              </span>
+            <% end %>
+          </td>
+          <td class="text-sm">
+            <% if trigger.cooldown_minutes.to_i > 0 %>
+              <%= trigger.cooldown_minutes %>m
+            <% else %>
+              <span class="opacity-40">None</span>
+            <% end %>
+          </td>
+          <td class="text-sm">
+            <% if trigger.last_fired_at %>
+              <span title="<%= trigger.last_fired_at %>"><%= time_ago_in_words(trigger.last_fired_at) %> ago</span>
+            <% else %>
+              <span class="opacity-40">Never</span>
+            <% end %>
+          </td>
+          <td>
+            <span class="badge badge-<%= trigger.enabled? ? 'success' : 'ghost' %> badge-sm">
+              <%= trigger.enabled? ? "Active" : "Disabled" %>
+            </span>
+          </td>
+          <td class="flex gap-1">
+            <%= button_to fire_admin_agent_agent_trigger_path(@agent, trigger), method: :post,
+                  class: "btn btn-ghost btn-xs text-primary",
+                  title: "Fire now",
+                  data: { turbo_confirm: "Fire this trigger now?" } do %>
+              <i class="fas fa-play"></i>
+            <% end %>
+            <%= button_to admin_agent_agent_trigger_path(@agent, trigger), method: :patch,
+                  class: "btn btn-ghost btn-xs",
+                  title: trigger.enabled? ? "Disable" : "Enable",
+                  params: { agent_trigger: { enabled: !trigger.enabled? } } do %>
+              <i class="fas fa-<%= trigger.enabled? ? 'pause' : 'check' %>"></i>
+            <% end %>
+            <%= button_to admin_agent_agent_trigger_path(@agent, trigger), method: :delete,
+                  class: "btn btn-ghost btn-xs text-error",
+                  title: "Delete",
+                  data: { turbo_confirm: "Delete this trigger?" } do %>
+              <i class="fas fa-trash"></i>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <% if @triggers.empty? %>
+    <div class="text-center py-8 opacity-60">
+      <p>No triggers configured. Add one above to automate agent execution.</p>
+    </div>
+  <% end %>
+</div>

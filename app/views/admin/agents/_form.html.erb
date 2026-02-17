@@ -1,0 +1,105 @@
+<%= form_with(model: [:admin, agent], class: "space-y-6", data: { controller: "agent-form" }) do |f| %>
+  <% if agent.errors.any? %>
+    <div class="alert alert-error">
+      <ul>
+        <% agent.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Name -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Name *</span></label>
+      <%= f.text_field :name, class: "input input-bordered", placeholder: "e.g. Invoice Manager",
+          data: { agent_form_target: "name", action: "input->agent-form#generateSlug" } %>
+    </div>
+
+    <!-- Slug -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Slug *</span></label>
+      <%= f.text_field :slug, class: "input input-bordered", placeholder: "auto-generated",
+          data: { agent_form_target: "slug" } %>
+      <label class="label"><span class="label-text-alt">Unique identifier, auto-generated from name</span></label>
+    </div>
+
+    <!-- Category -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Category *</span></label>
+      <%= f.select :category, Agent::CATEGORIES.map { |c| [c.capitalize, c] }, {}, class: "select select-bordered" %>
+    </div>
+
+    <!-- AI Model -->
+    <div class="form-control" data-controller="model-select">
+      <label class="label"><span class="label-text font-medium">AI Model</span></label>
+      <% available_models = AiModel.available.includes(:service_provider) %>
+      <% grouped = available_models.group_by { |m| m.service_provider.name } %>
+      <%= f.select :ai_model_id,
+            grouped_options_for_select(
+              grouped.map { |provider_name, models|
+                [provider_name, models.map { |m| [m.display_label, m.id, { "data-model-id" => m.model_id, "data-context" => m.context_window, "data-pricing" => "#{m.input_price_per_million}/#{m.output_price_per_million}" }] }]
+              },
+              agent.ai_model_id
+            ),
+            { include_blank: "Select a model..." },
+            class: "select select-bordered",
+            data: { model_select_target: "select", action: "change->model-select#changed" } %>
+      <div data-model-select-target="info" class="text-xs opacity-60 mt-1 hidden"></div>
+    </div>
+
+    <!-- Service Provider (auto-set from model, or manual fallback) -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Service Provider</span></label>
+      <%= f.collection_select :service_provider_id, @service_providers, :id, :name, { include_blank: "None" }, class: "select select-bordered" %>
+      <label class="label"><span class="label-text-alt">Auto-set when an AI model is selected</span></label>
+    </div>
+
+    <!-- Legacy Model (hidden fallback) -->
+    <%= f.hidden_field :llm_model %>
+
+    <!-- Temperature -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Temperature</span></label>
+      <%= f.number_field :temperature, class: "input input-bordered", step: 0.1, min: 0, max: 2 %>
+    </div>
+
+    <!-- Max Iterations -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Max Iterations</span></label>
+      <%= f.number_field :max_iterations, class: "input input-bordered", min: 1, max: 100 %>
+    </div>
+
+    <!-- Mode -->
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Mode</span></label>
+      <%= f.select :mode, Agent::MODES.map { |m| [m.capitalize, m] }, {}, class: "select select-bordered" %>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <div class="form-control">
+    <label class="label"><span class="label-text font-medium">Description</span></label>
+    <%= f.text_area :description, class: "textarea textarea-bordered h-20", placeholder: "Brief description of what this agent does..." %>
+  </div>
+
+  <!-- System Prompt -->
+  <div class="form-control">
+    <label class="label"><span class="label-text font-medium">System Prompt</span></label>
+    <%= f.text_area :system_prompt, class: "textarea textarea-bordered h-40 font-mono text-sm", placeholder: "You are an AI assistant that..." %>
+  </div>
+
+  <!-- Change Summary (for updates) -->
+  <% unless agent.new_record? %>
+    <div class="form-control">
+      <label class="label"><span class="label-text font-medium">Change Summary</span></label>
+      <input type="text" name="change_summary" class="input input-bordered" placeholder="Brief description of changes...">
+    </div>
+  <% end %>
+
+  <div class="flex justify-end gap-3">
+    <%= link_to "Cancel", agent.new_record? ? admin_agents_path : admin_agent_path(agent), class: "btn btn-ghost" %>
+    <%= f.submit agent.new_record? ? "Create Agent" : "Update Agent", class: "btn btn-primary" %>
+  </div>
+<% end %>

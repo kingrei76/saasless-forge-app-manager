@@ -80,11 +80,6 @@
             <% end %>
           </li>
           <li>
-            <%= link_to admin_github_accounts_path, class: "flex items-center gap-3" do %>
-              <i class="fab fa-github w-5 text-center"></i> GitHub Accounts
-            <% end %>
-          </li>
-          <li>
             <%= link_to admin_clients_path, class: "flex items-center gap-3" do %>
               <i class="fas fa-users w-5 text-center"></i> Clients
             <% end %>
@@ -122,6 +117,37 @@
           <li>
             <%= link_to admin_recurring_invoices_path, class: "flex items-center gap-3" do %>
               <i class="fas fa-sync-alt w-5 text-center"></i> Recurring Billing
+            <% end %>
+          </li>
+
+          <li class="menu-title mt-4"><span>AI Agents</span></li>
+          <li>
+            <%= link_to admin_agent_dashboard_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-brain w-5 text-center"></i> Agent Dashboard
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_agents_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-robot w-5 text-center"></i> Agents
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_tool_definitions_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-wrench w-5 text-center"></i> Tool Registry
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_agent_executions_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-play-circle w-5 text-center"></i> Executions
+            <% end %>
+          </li>
+          <li>
+            <%= link_to admin_agent_alerts_path, class: "flex items-center gap-3" do %>
+              <i class="fas fa-bell w-5 text-center"></i> Alerts
+              <% open_alerts_count = AgentAlert.open_alerts.count rescue 0 %>
+              <% if open_alerts_count > 0 %>
+                <span class="badge badge-error badge-sm"><%= open_alerts_count %></span>
+              <% end %>
             <% end %>
           </li>
 
@@ -167,5 +193,13 @@
       </aside>
     </div>
   </div>
+
+  <%= render "admin/builder_chat/panel" %>
+
+  <script>
+    document.addEventListener("builder-chat:agentUpdated", function() {
+      Turbo.visit(window.location.href);
+    });
+  </script>
 </body>
 </html>

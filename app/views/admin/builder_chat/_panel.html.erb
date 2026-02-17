@@ -1,0 +1,142 @@
+<%# Chat panel for the Agent Builder %>
+<%# Self-contained: looks up builder agent and session directly %>
+
+<%
+  builder_agent = Agent.find_by(slug: "agent-builder") rescue nil
+  builder_available = builder_agent.present?
+
+  if builder_available && current_user
+    chat_session = BuilderChatSession.active
+      .where(user: current_user, agent: @agent, builder_agent: builder_agent)
+      .order(updated_at: :desc)
+      .first
+    chat_session ||= BuilderChatSession.create!(
+      user: current_user,
+      agent: @agent,
+      builder_agent: builder_agent,
+      status: "active"
+    )
+    messages = chat_session.messages_for_display
+    current_exec = chat_session.current_execution
+  else
+    chat_session = nil
+    messages = []
+    current_exec = nil
+  end
+
+  agent_id = @agent&.id || ""
+  agent_name = @agent&.name || "a new agent"
+  execution_id = current_exec&.id || ""
+%>
+
+<div data-controller="builder-chat"
+     data-builder-chat-agent-id-value="<%= agent_id %>"
+     data-builder-chat-send-url-value="<%= admin_builder_chat_send_path %>"
+     data-builder-chat-poll-url-value="<%= admin_builder_chat_poll_path %>"
+     data-builder-chat-approve-url-value="<%= admin_builder_chat_approve_path %>"
+     data-builder-chat-reject-url-value="<%= admin_builder_chat_reject_path %>"
+     data-builder-chat-clear-url-value="<%= admin_builder_chat_clear_path %>"
+     data-builder-chat-session-url-value="<%= admin_builder_chat_session_path %>"
+     data-builder-chat-execution-id-value="<%= execution_id %>"
+     data-builder-chat-open-value="false">
+
+  <!-- Floating toggle button -->
+  <button class="btn btn-circle btn-primary shadow-lg fixed bottom-6 right-6 z-50"
+          data-action="click->builder-chat#togglePanel"
+          title="Agent Builder Chat">
+    <i class="fas fa-robot text-lg"></i>
+  </button>
+
+  <!-- Slide-out panel -->
+  <div data-builder-chat-target="panel"
+       class="fixed top-0 right-0 h-full w-96 bg-base-100 shadow-2xl z-40 flex flex-col transform translate-x-full transition-transform duration-300 ease-in-out border-l border-base-300">
+
+    <!-- Header -->
+    <div class="border-b border-base-300 bg-base-200/50">
+      <div class="flex items-center justify-between px-4 py-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <i class="fas fa-robot text-primary"></i>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-sm truncate">Agent Builder</h3>
+            <p data-builder-chat-target="subtitle" class="text-xs opacity-60 truncate">
+              <% if @agent&.persisted? %>
+                Configuring: <%= agent_name %>
+              <% else %>
+                Create a new agent
+              <% end %>
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <% if builder_available %>
+            <button class="btn btn-ghost btn-xs" data-action="click->builder-chat#clearChat" title="Clear chat">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          <% end %>
+          <button class="btn btn-ghost btn-xs" data-action="click->builder-chat#togglePanel" title="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <% if builder_available %>
+        <div class="px-4 pb-2">
+          <% switchable_agents = Agent.where.not(slug: "agent-builder").order(:name) %>
+          <select data-builder-chat-target="agentSelect"
+                  data-action="change->builder-chat#switchAgent"
+                  class="select select-bordered select-xs w-full">
+            <option value="">New Agent</option>
+            <% switchable_agents.each do |a| %>
+              <option value="<%= a.id %>" <%= "selected" if a.id == @agent&.id %>><%= a.name %></option>
+            <% end %>
+          </select>
+        </div>
+      <% end %>
+    </div>
+
+    <% if builder_available %>
+      <!-- Messages area -->
+      <div data-builder-chat-target="messagesContainer"
+           class="flex-1 overflow-y-auto px-4 py-3 space-y-1">
+        <%= render "admin/builder_chat/messages_list", messages: messages, agent: @agent, agent_name: agent_name %>
+      </div>
+
+      <!-- Typing indicator -->
+      <div data-builder-chat-target="typingIndicator" class="hidden px-4 pb-2">
+        <div class="chat chat-start">
+          <div class="chat-bubble">
+            <span class="loading loading-dots loading-sm"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="border-t border-base-300 p-3">
+        <div class="flex gap-2">
+          <textarea data-builder-chat-target="messageInput"
+                    data-action="keydown->builder-chat#handleKeydown"
+                    placeholder="Ask the builder agent..."
+                    rows="1"
+                    class="textarea textarea-bordered textarea-sm flex-1 resize-none min-h-[2.5rem] max-h-24"></textarea>
+          <button data-builder-chat-target="sendButton"
+                  data-action="click->builder-chat#sendMessage"
+                  class="btn btn-primary btn-sm self-end">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+        <p class="text-xs opacity-40 mt-1">Enter to send, Shift+Enter for new line</p>
+      </div>
+    <% else %>
+      <!-- Builder agent not configured -->
+      <div class="flex-1 flex items-center justify-center px-6">
+        <div class="text-center">
+          <i class="fas fa-robot text-4xl opacity-20 mb-4"></i>
+          <h4 class="font-semibold mb-2">Agent Builder Not Available</h4>
+          <p class="text-sm opacity-60 mb-4">
+            The Agent Builder agent hasn't been set up yet. Run the seed task to create it:
+          </p>
+          <code class="text-xs bg-base-200 px-3 py-1 rounded">rake agents:seed_builder</code>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

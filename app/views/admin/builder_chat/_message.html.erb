@@ -1,0 +1,16 @@
+<%# Renders a single chat message bubble %>
+<%# Locals: message (Hash with role, content, timestamp, metadata) %>
+<%
+  role = message[:role]
+  alignment = role == "user" ? "chat-end" : "chat-start"
+  bubble_class = case role
+                 when "user" then "chat-bubble-primary"
+                 when "system" then "chat-bubble bg-base-200 text-base-content/60"
+                 else "chat-bubble"
+                 end
+%>
+<div class="chat <%= alignment %> mb-1">
+  <div class="chat-bubble <%= bubble_class %> text-sm">
+    <%= simple_format(h(message[:content]), {}, wrapper_tag: "span") %>
+  </div>
+</div>
