@@ -101,11 +101,20 @@ class StripeWebhookService
   end
 
   def handle_invoice_paid
-    invoice = find_invoice
+    # invoice_payment.paid sends an InvoicePayment object; invoice.paid sends an Invoice object
+    if @type.start_with?("invoice_payment")
+      invoice = find_invoice_from_payment
+    else
+      invoice = find_invoice
+    end
     return unless invoice
 
-    paid_at = @data.status_transitions&.paid_at
-    timestamp = paid_at ? Time.at(paid_at) : Time.current
+    if @type.start_with?("invoice_payment")
+      timestamp = Time.current
+    else
+      paid_at = @data.status_transitions&.paid_at
+      timestamp = paid_at ? Time.at(paid_at) : Time.current
+    end
 
     invoice.mark_paid_from_stripe!(timestamp)
 
@@ -121,33 +130,37 @@ class StripeWebhookService
       end
     end
 
+    stripe_invoice_id = @type.start_with?("invoice_payment") ? @data.try(:invoice) : @data.id
+
     AuditLogger.log(
       user: nil,
       action: "stripe_invoice_paid",
       auditable: invoice,
       changes_data: {
-        stripe_invoice_id: @data.id,
-        amount_paid: @data.amount_paid,
+        stripe_invoice_id: stripe_invoice_id,
+        amount_paid: @data.try(:amount_paid),
         paid_at: timestamp.iso8601
       }
     )
 
-    Rails.logger.info("StripeWebhookService: Invoice ##{invoice.id} marked as paid via webhook")
+    Rails.logger.info("StripeWebhookService: Invoice ##{invoice.id} marked as paid via webhook (#{@type})")
   end
 
   def handle_invoice_payment_failed
-    invoice = find_invoice
+    invoice = @type.start_with?("invoice_payment") ? find_invoice_from_payment : find_invoice
     return unless invoice
 
     invoice.mark_failed!
+
+    stripe_invoice_id = @type.start_with?("invoice_payment") ? @data.try(:invoice) : @data.id
 
     AuditLogger.log(
       user: nil,
       action: "stripe_payment_failed",
       auditable: invoice,
       changes_data: {
-        stripe_invoice_id: @data.id,
-        attempt_count: @data.attempt_count
+        stripe_invoice_id: stripe_invoice_id,
+        attempt_count: @data.try(:attempt_count)
       }
     )
 
@@ -234,6 +247,21 @@ class StripeWebhookService
   def configure_stripe!
     key = Setting[:stripe_api_key].presence || ENV["STRIPE_API_KEY"]
     Stripe.api_key = key if key.present?
+  end
+
+  def find_invoice_from_payment
+    # InvoicePayment object has an `invoice` field with the invoice ID
+    stripe_invoice_id = @data.try(:invoice)
+    unless stripe_invoice_id
+      Rails.logger.warn("StripeWebhookService: invoice_payment event missing invoice field")
+      return nil
+    end
+
+    invoice = Invoice.find_by(stripe_invoice_id: stripe_invoice_id)
+    unless invoice
+      Rails.logger.warn("StripeWebhookService: No local invoice found for Stripe invoice #{stripe_invoice_id} (from invoice_payment)")
+    end
+    invoice
   end
 
   def find_invoice
