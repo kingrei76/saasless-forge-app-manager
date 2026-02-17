@@ -35,6 +35,7 @@
   </div>
 </div>
 
+<% if defined?(Agent) && respond_to?(:admin_agents_path) %>
 <!-- AI Agent Stats -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
   <div class="stat bg-base-100 rounded-box shadow">
@@ -62,6 +63,7 @@
     <div class="stat-desc"><%= link_to "View alerts", admin_agent_alerts_path, class: "link" %></div>
   </div>
 </div>
+<% end %>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
   <div class="card bg-base-100 shadow">
