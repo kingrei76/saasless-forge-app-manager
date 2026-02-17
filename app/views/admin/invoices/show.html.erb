@@ -134,6 +134,11 @@
             <i class="fas fa-external-link-alt mr-1"></i> Customer Payment Link
           <% end %>
         <% end %>
+        <% if @invoice.stripe_managed? && @invoice.status.in?(%w[sent overdue failed]) %>
+          <%= button_to resend_email_admin_invoice_path(@invoice), method: :post, class: "btn btn-outline btn-sm", data: { turbo_confirm: "Resend invoice email to #{@invoice.client.email}?" } do %>
+            <i class="fas fa-paper-plane mr-1"></i> Resend Email
+          <% end %>
+        <% end %>
         <% if @invoice.stripe_managed? && @invoice.status.in?(%w[sent]) %>
           <%= button_to void_stripe_admin_invoice_path(@invoice), method: :post, class: "btn btn-error btn-outline btn-sm", data: { turbo_confirm: "Void this invoice in Stripe? This cannot be undone." } do %>
             <i class="fas fa-ban mr-1"></i> Void Invoice

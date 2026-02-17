@@ -131,6 +131,7 @@ Rails.application.routes.draw do
         post :void_stripe
         post :duplicate_as_draft
         post :sync_stripe
+        post :resend_email
         get :preview_send
       end
     end

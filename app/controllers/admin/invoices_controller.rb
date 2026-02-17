@@ -1,7 +1,7 @@
 class Admin::InvoicesController < Admin::BaseController
   before_action :require_admin!
-  before_action :set_invoice, only: [:show, :edit, :update, :destroy, :send_to_stripe, :mark_paid, :archive, :preview_send, :void_stripe, :duplicate_as_draft, :sync_stripe]
-  before_action :configure_stripe!, only: [:void_stripe, :sync_stripe]
+  before_action :set_invoice, only: [:show, :edit, :update, :destroy, :send_to_stripe, :mark_paid, :archive, :preview_send, :void_stripe, :duplicate_as_draft, :sync_stripe, :resend_email]
+  before_action :configure_stripe!, only: [:void_stripe, :sync_stripe, :resend_email]
 
   def index
     @invoices = Invoice.includes(:client).order(created_at: :desc)
@@ -172,6 +172,36 @@ class Admin::InvoicesController < Admin::BaseController
     )
 
     redirect_to admin_invoice_path(new_invoice), notice: "Draft invoice ##{new_invoice.id} created from voided invoice ##{@invoice.id}. Review, edit if needed, and resend."
+  end
+
+  def resend_email
+    unless @invoice.stripe_managed? && @invoice.status.in?(%w[sent overdue failed])
+      redirect_to admin_invoice_path(@invoice), alert: "Only sent, overdue, or failed Stripe invoices can be resent."
+      return
+    end
+
+    client = @invoice.client
+
+    # Sync client email to Stripe customer if it differs
+    if client.stripe_customer_id.present?
+      stripe_customer = Stripe::Customer.retrieve(client.stripe_customer_id)
+      if stripe_customer.email != client.email
+        Stripe::Customer.update(client.stripe_customer_id, { email: client.email })
+      end
+    end
+
+    Stripe::Invoice.send_invoice(@invoice.stripe_invoice_id)
+
+    AuditLogger.log(
+      user: current_user,
+      action: "invoice_reminder_sent",
+      auditable: @invoice,
+      changes_data: { sent_to: client.email }
+    )
+
+    redirect_to admin_invoice_path(@invoice), notice: "Invoice email resent to #{client.email}."
+  rescue Stripe::StripeError => e
+    redirect_to admin_invoice_path(@invoice), alert: "Stripe error: #{e.message}"
   end
 
   def sync_stripe

@@ -220,9 +220,14 @@
                     <span class="opacity-40">--</span>
                   <% end %>
                 </td>
-                <td>
+                <td class="flex gap-1">
                   <%= link_to admin_invoice_path(invoice), class: "btn btn-ghost btn-xs" do %>
                     <i class="fas fa-eye"></i>
+                  <% end %>
+                  <% if invoice.stripe_invoice_id.present? && invoice.status.in?(%w[sent overdue failed]) %>
+                    <%= button_to resend_email_admin_invoice_path(invoice), method: :post, class: "btn btn-ghost btn-xs", title: "Resend invoice email to #{@recurring_invoice.client.email}", data: { turbo_confirm: "Resend invoice email to #{@recurring_invoice.client.email}?" } do %>
+                      <i class="fas fa-paper-plane"></i>
+                    <% end %>
                   <% end %>
                 </td>
               </tr>
