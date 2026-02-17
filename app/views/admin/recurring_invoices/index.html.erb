@@ -69,39 +69,11 @@
                   <% end %>
                 </td>
                 <td>
-                  <%
-                    default_markup = Setting[:default_markup_percentage]&.to_f || 30.0
-                    infra_floor = 0
-                    usage_to_date = 0
-                    app_ids = []
-
-                    ri.client.app_assignments.each do |aa|
-                      next unless aa.app.included?
-                      markup = aa.markup_percentage || ri.client.try(:markup_percentage) || default_markup
-                      app_ids << aa.app_id
-
-                      aa.app.render_services.reject(&:suspended?).each do |rs|
-                        base = rs.monthly_price
-                        infra_floor += (base * (1 + markup / 100.0)).round(2) if base > 0
-                      end
-                    end
-
-                    if app_ids.any?
-                      raw_usage = ApiUsageLog.where(app_id: app_ids)
-                                             .where("created_at >= ?", Date.current.beginning_of_month)
-                                             .sum(:estimated_cost)
-                      if raw_usage > 0
-                        avg_markup = ri.client.app_assignments.average(:markup_percentage)&.to_f || ri.client.try(:markup_percentage)&.to_f || default_markup
-                        usage_to_date = (raw_usage * (1 + avg_markup / 100.0)).round(2)
-                      end
-                    end
-
-                    est_total = infra_floor + usage_to_date
-                  %>
-                  <% if est_total > 0 %>
-                    <span class="font-medium">~<%= number_to_currency(est_total) %>+</span>
-                    <% if usage_to_date > 0 %>
-                      <br><span class="text-xs opacity-50">incl. <%= number_to_currency(usage_to_date) %> usage</span>
+                  <% est = @estimated_bills[ri.id] %>
+                  <% if est && est[:total] > 0 %>
+                    <span class="font-medium">~<%= number_to_currency(est[:total]) %></span>
+                    <% if est[:usage] > 0 %>
+                      <br><span class="text-xs opacity-50">incl. <%= number_to_currency(est[:usage]) %> usage</span>
                     <% end %>
                   <% else %>
                     <span class="opacity-40">—</span>

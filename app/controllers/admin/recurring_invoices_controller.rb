@@ -6,6 +6,7 @@ class Admin::RecurringInvoicesController < Admin::BaseController
   def index
     RecurringInvoice.ensure_for_billable_clients!
     @recurring_invoices = RecurringInvoice.includes(:client, :invoices, client: { app_assignments: { app: :render_services } }).order(created_at: :desc)
+    @estimated_bills = estimate_next_bills(@recurring_invoices)
   end
 
   def show
@@ -173,5 +174,52 @@ class Admin::RecurringInvoicesController < Admin::BaseController
       :client_id, :collection_method, :days_until_due,
       :billing_day_of_month, :notes
     )
+  end
+
+  # Estimate next bill for each recurring invoice using the same logic
+  # as MonthlyInfrastructureBillingService (CalculatedCosts + markup)
+  def estimate_next_bills(recurring_invoices)
+    period_start = Date.current.beginning_of_month
+    period_end = Date.current.end_of_month
+
+    recurring_invoices.each_with_object({}) do |ri, estimates|
+      client = ri.client
+      infra_total = 0
+      usage_total = 0
+
+      client.app_assignments.each do |assignment|
+        app = assignment.app
+        next unless app.included?
+
+        markup = MarkupCalculator.for(app: app, client: client)
+
+        # Infrastructure: use CalculatedCosts if available, fall back to render service prices
+        calculated_costs = CalculatedCost.where(
+          app: app, client: client,
+          billing_period_start: period_start, billing_period_end: period_end
+        )
+
+        if calculated_costs.any?
+          calculated_costs.each do |cc|
+            infra_total += MarkupCalculator.apply(cost: cc.total_cost, markup_percentage: markup)
+          end
+        else
+          app.render_services.reject(&:suspended?).each do |rs|
+            base = rs.monthly_price
+            infra_total += MarkupCalculator.apply(cost: base, markup_percentage: markup) if base > 0
+          end
+        end
+
+        # API usage
+        usage_cost = ApiUsageLog.where(app_id: app.id)
+                                .where(created_at: period_start.beginning_of_day..period_end.end_of_day)
+                                .sum(:estimated_cost)
+        if usage_cost > 0
+          usage_total += MarkupCalculator.apply(cost: usage_cost, markup_percentage: markup)
+        end
+      end
+
+      estimates[ri.id] = { infra: infra_total.round(2), usage: usage_total.round(2), total: (infra_total + usage_total).round(2) }
+    end
   end
 end
