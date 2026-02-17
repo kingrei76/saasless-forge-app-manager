@@ -11,9 +11,9 @@ class StripeWebhookService
     case @type
     when "invoice.created"
       handle_invoice_created
-    when "invoice.paid"
+    when "invoice.paid", "invoice_payment.paid"
       handle_invoice_paid
-    when "invoice.payment_failed"
+    when "invoice.payment_failed", "invoice_payment.payment_failed"
       handle_invoice_payment_failed
     when "invoice.overdue"
       handle_invoice_overdue
