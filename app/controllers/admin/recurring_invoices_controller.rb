@@ -122,12 +122,24 @@ class Admin::RecurringInvoicesController < Admin::BaseController
     invoice = result[:invoice]
     invoice.update!(recurring_invoice: @recurring_invoice)
 
-    # Calculate days until billing day
-    days_until_due = @recurring_invoice.days_until_due || 30
-
     # Send via Stripe — customer gets emailed the real invoice
     stripe_service = StripeInvoiceService.new(invoice)
     stripe_service.create_and_send!
+
+    # Also create the subscription (anchored to 1st of next month) so
+    # automatic billing kicks in after this first invoice is paid
+    subscription_notice = ""
+    if client.stripe_subscription_id.blank? && Setting[:stripe_billing_price_id].present?
+      begin
+        sub_service = StripeSubscriptionSetupService.new(client)
+        subscription = sub_service.create_subscription!
+        @recurring_invoice.pause! if @recurring_invoice.active?
+        subscription_notice = " Subscription #{subscription.id} created — automatic billing starts next month."
+      rescue => e
+        Rails.logger.error("Failed to create subscription for #{client.name}: #{e.message}")
+        subscription_notice = " (Subscription setup failed: #{e.message} — you can retry via 'Migrate to Subscription')"
+      end
+    end
 
     AuditLogger.log(
       user: current_user,
@@ -137,12 +149,13 @@ class Admin::RecurringInvoicesController < Admin::BaseController
         client: client.name,
         email: client.email,
         stripe_invoice_id: invoice.stripe_invoice_id,
-        total: invoice.total.to_f
+        total: invoice.total.to_f,
+        subscription_id: client.stripe_subscription_id
       }
     )
 
     redirect_to admin_recurring_invoice_path(@recurring_invoice),
-      notice: "Initial invoice for #{number_to_currency(invoice.total)} sent to #{client.email} via Stripe. Payment due in #{days_until_due} days."
+      notice: "Invoice for #{number_to_currency(invoice.total)} sent to #{client.email}.#{subscription_notice}"
   rescue Stripe::StripeError => e
     redirect_to admin_recurring_invoice_path(@recurring_invoice), alert: "Stripe error: #{e.message}"
   rescue StandardError => e

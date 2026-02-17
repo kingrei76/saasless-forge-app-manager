@@ -109,6 +109,18 @@ class StripeWebhookService
 
     invoice.mark_paid_from_stripe!(timestamp)
 
+    # After payment, sync the customer's payment method so it's saved
+    # for future automatic charges (subscription billing)
+    client = invoice.client
+    if client&.stripe_customer_id.present? && client.stripe_default_payment_method_id.blank?
+      begin
+        StripePaymentMethodService.new(client).sync_default_payment_method!
+        Rails.logger.info("StripeWebhookService: Synced payment method for #{client.name} after invoice payment")
+      rescue => e
+        Rails.logger.warn("StripeWebhookService: Failed to sync payment method for #{client.name}: #{e.message}")
+      end
+    end
+
     AuditLogger.log(
       user: nil,
       action: "stripe_invoice_paid",

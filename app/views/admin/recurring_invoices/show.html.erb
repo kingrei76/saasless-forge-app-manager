@@ -30,14 +30,14 @@
       <% end %>
     <% end %>
 
-    <% if @recurring_invoice.client.stripe_subscription_id.blank? && @recurring_invoice.client.stripe_default_payment_method_id.present? %>
-      <%= button_to migrate_to_subscription_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-accent btn-sm", data: { turbo_confirm: "Migrate #{@recurring_invoice.client.name} to subscription billing? This creates a Stripe Subscription and pauses the old recurring invoice. The first automated invoice will be generated at the end of the billing cycle." } do %>
-        <i class="fas fa-sync-alt mr-1"></i> Migrate to Subscription
-      <% end %>
-    <% elsif @recurring_invoice.client.stripe_subscription_id.present? %>
+    <% if @recurring_invoice.client.stripe_subscription_id.present? %>
       <span class="badge badge-success gap-1">
         <i class="fas fa-check-circle"></i> Subscription Active
       </span>
+    <% elsif @recurring_invoice.client.stripe_default_payment_method_id.present? %>
+      <%= button_to migrate_to_subscription_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-accent btn-sm", data: { turbo_confirm: "Create subscription for #{@recurring_invoice.client.name}? Automatic billing starts next month." } do %>
+        <i class="fas fa-sync-alt mr-1"></i> Create Subscription
+      <% end %>
     <% end %>
   </div>
 </div>
@@ -143,15 +143,22 @@
           </div>
         <% else %>
           <div class="flex gap-2 flex-wrap">
-            <%= button_to send_payment_setup_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-primary btn-sm", data: { turbo_confirm: "Send the first infrastructure invoice to #{@recurring_invoice.client.name} (#{@recurring_invoice.client.email}) via Stripe? Their card will be saved when they pay." } do %>
-              <i class="fas fa-file-invoice-dollar mr-1"></i> Send Initial Invoice
+            <% if @recurring_invoice.client.stripe_subscription_id.blank? %>
+              <%= button_to send_payment_setup_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-primary btn-sm", data: { turbo_confirm: "Send the first infrastructure invoice to #{@recurring_invoice.client.name} (#{@recurring_invoice.client.email}) and set up their subscription for automatic billing starting next month?" } do %>
+                <i class="fas fa-file-invoice-dollar mr-1"></i> Send Invoice & Start Subscription
+              <% end %>
+            <% else %>
+              <%= button_to send_payment_setup_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-primary btn-sm", data: { turbo_confirm: "Send the current month's invoice to #{@recurring_invoice.client.name} (#{@recurring_invoice.client.email}) via Stripe?" } do %>
+                <i class="fas fa-file-invoice-dollar mr-1"></i> Send Invoice
+              <% end %>
             <% end %>
             <%= button_to setup_payment_method_admin_recurring_invoice_path(@recurring_invoice), method: :post, class: "btn btn-outline btn-sm" do %>
               <i class="fas fa-credit-card mr-1"></i> Set Up Card as Admin
             <% end %>
           </div>
           <p class="text-xs opacity-50 mt-2">
-            "Send Initial Invoice" sends the first real bill via Stripe email. Customer's card is saved when they pay.
+            Sends this month's bill via Stripe<%= " and creates a $0/mo subscription for automatic billing going forward" unless @recurring_invoice.client.stripe_subscription_id.present? %>.
+            Customer's card is saved when they pay.
           </p>
         <% end %>
       </div>
