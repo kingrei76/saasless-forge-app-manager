@@ -29,6 +29,9 @@
           <div class="form-control">
             <label class="label">
               <span class="label-text font-medium">Client</span>
+              <button type="button" class="btn btn-ghost btn-xs text-primary" data-action="click->bid-wizard#openNewClientModal">
+                <i class="fas fa-plus mr-1"></i> New Client
+              </button>
             </label>
             <input type="text"
                    class="input input-bordered w-full"
@@ -156,4 +159,39 @@
       <%= f.submit "Continue", class: "btn btn-primary", data: { action: "click->bid-wizard#validateAndSubmit", turbo_submits_with: "Generating questions..." } %>
     </div>
   <% end %>
+
+  <!-- New Client Modal -->
+  <dialog class="modal" data-bid-wizard-target="newClientModal">
+    <div class="modal-box">
+      <h3 class="text-lg font-bold mb-4">
+        <i class="fas fa-user-plus text-primary mr-2"></i>
+        New Client
+      </h3>
+
+      <div class="alert alert-error hidden mb-4" data-bid-wizard-target="newClientErrors"></div>
+
+      <form action="<%= admin_clients_path %>" data-turbo="false" data-bid-wizard-target="newClientForm" data-action="submit->bid-wizard#submitNewClient" class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text">Name</span></label>
+          <input type="text" name="client[name]" class="input input-bordered w-full" required>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Email</span></label>
+          <input type="email" name="client[email]" class="input input-bordered w-full">
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text">Company</span></label>
+          <input type="text" name="client[company]" class="input input-bordered w-full">
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn btn-ghost" data-action="click->bid-wizard#closeNewClientModal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Client</button>
+        </div>
+      </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+  </dialog>
 </div>
