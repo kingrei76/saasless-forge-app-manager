@@ -3,7 +3,10 @@ class BidWizardService
 
   def initialize(bid)
     @bid = bid
-    @grok = GrokApiService.new(app: ai_app, trackable: bid)
+  end
+
+  def grok
+    @grok ||= GrokApiService.new(app: ai_app, trackable: @bid)
   end
 
   def primary_app
@@ -53,7 +56,7 @@ class BidWizardService
     return { success: false, error: "No project description" } if @bid.project_description.blank?
 
     repo_contexts = gather_repo_context
-    questions = @grok.generate_clarifying_questions(
+    questions = grok.generate_clarifying_questions(
       @bid.project_description,
       repo_contexts: repo_contexts
     )
@@ -72,7 +75,7 @@ class BidWizardService
     project_scope = @bid.project_scope || "small_feature"
     repo_contexts = gather_repo_context
 
-    details = @grok.generate_bid_details(
+    details = grok.generate_bid_details(
       @bid.project_description,
       @bid.wizard_answers,
       hourly_rate: hourly_rate,
@@ -101,7 +104,7 @@ class BidWizardService
     repo_contexts = gather_repo_context
 
     # Use AI to suggest costs, passing existing infrastructure and repo context
-    ai_costs = @grok.suggest_system_costs(
+    ai_costs = grok.suggest_system_costs(
       @bid.project_description,
       @bid.wizard_answers,
       existing_infrastructure: existing_descriptions,
@@ -254,7 +257,7 @@ class BidWizardService
     if @bid.project_description.present?
       # Generate title suggestion if still default
       if @bid.title == "New Project Bid"
-        suggested_title = @grok.suggest_title(@bid.project_description)
+        suggested_title = grok.suggest_title(@bid.project_description)
         @bid.title = suggested_title if suggested_title.present?
       end
 
@@ -262,7 +265,7 @@ class BidWizardService
       @bid.save!
       repo_contexts = gather_repo_context
 
-      questions = @grok.generate_clarifying_questions(
+      questions = grok.generate_clarifying_questions(
         @bid.project_description,
         repo_contexts: repo_contexts
       )
@@ -292,7 +295,7 @@ class BidWizardService
     # Generate bid details from Grok
     hourly_rate = @bid.hourly_rate || 60.0
     project_scope = @bid.project_scope || "small_feature"
-    details = @grok.generate_bid_details(
+    details = grok.generate_bid_details(
       @bid.project_description,
       answers,
       hourly_rate: hourly_rate,

@@ -1,10 +1,87 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["clientSearch", "clientSelect", "appSearch", "appList", "appValidation", "newAppsContainer"]
+  static targets = ["clientSearch", "clientSelect", "appSearch", "appList", "appValidation", "newAppsContainer", "newClientModal", "newClientForm", "newClientErrors"]
 
   connect() {
     this.validateApps()
+  }
+
+  openNewClientModal() {
+    if (this.hasNewClientModalTarget) {
+      this.newClientFormTarget.reset()
+      if (this.hasNewClientErrorsTarget) {
+        this.newClientErrorsTarget.classList.add("hidden")
+        this.newClientErrorsTarget.innerHTML = ""
+      }
+      this.newClientModalTarget.showModal()
+    }
+  }
+
+  closeNewClientModal() {
+    if (this.hasNewClientModalTarget) {
+      this.newClientModalTarget.close()
+    }
+  }
+
+  async submitNewClient(event) {
+    event.preventDefault()
+    const form = this.newClientFormTarget
+    const submitBtn = form.querySelector("[type='submit']")
+    const originalText = submitBtn.textContent
+    submitBtn.textContent = "Creating..."
+    submitBtn.disabled = true
+
+    try {
+      const formData = new FormData(form)
+      const response = await fetch(form.action, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+        },
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        // Add new client to the select dropdown
+        const option = document.createElement("option")
+        option.value = data.client.id
+        option.textContent = data.client.name
+        option.selected = true
+        this.clientSelectTarget.appendChild(option)
+
+        // Sort options alphabetically (skip placeholder)
+        const options = Array.from(this.clientSelectTarget.options)
+        const placeholder = options.shift()
+        options.sort((a, b) => a.textContent.localeCompare(b.textContent))
+        this.clientSelectTarget.innerHTML = ""
+        this.clientSelectTarget.appendChild(placeholder)
+        options.forEach(opt => this.clientSelectTarget.appendChild(opt))
+
+        // Select the new client
+        this.clientSelectTarget.value = data.client.id
+        this.clientSelectTarget.dispatchEvent(new Event("change"))
+
+        this.closeNewClientModal()
+      } else {
+        // Show validation errors
+        if (this.hasNewClientErrorsTarget) {
+          this.newClientErrorsTarget.classList.remove("hidden")
+          this.newClientErrorsTarget.innerHTML = `<ul>${data.errors.map(e => `<li>${e}</li>`).join("")}</ul>`
+        }
+      }
+    } catch (error) {
+      if (this.hasNewClientErrorsTarget) {
+        this.newClientErrorsTarget.classList.remove("hidden")
+        this.newClientErrorsTarget.innerHTML = "<p>Something went wrong. Please try again.</p>"
+      }
+    } finally {
+      submitBtn.textContent = originalText
+      submitBtn.disabled = false
+    }
   }
 
   filterClients(event) {

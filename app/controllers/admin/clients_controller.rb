@@ -46,9 +46,15 @@ class Admin::ClientsController < Admin::BaseController
     @client = Client.new(client_params)
 
     if @client.save
-      redirect_to admin_client_path(@client), notice: "Client created."
+      respond_to do |format|
+        format.html { redirect_to admin_client_path(@client), notice: "Client created." }
+        format.json { render json: { success: true, client: { id: @client.id, name: @client.name } } }
+      end
     else
-      render :new, status: :unprocessable_entity
+      respond_to do |format|
+        format.html { render :new, status: :unprocessable_entity }
+        format.json { render json: { success: false, errors: @client.errors.full_messages }, status: :unprocessable_entity }
+      end
     end
   end
 

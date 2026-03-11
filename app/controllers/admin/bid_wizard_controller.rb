@@ -19,14 +19,22 @@ class Admin::BidWizardController < Admin::BaseController
     @bid.wizard_state = { "current_step" => "describe" }
 
     if @bid.save
-      service = BidWizardService.new(@bid)
-      result = service.process_step("describe", wizard_params)
+      begin
+        service = BidWizardService.new(@bid)
+        result = service.process_step("describe", wizard_params)
 
-      if result[:success]
-        redirect_to admin_bid_wizard_path(@bid)
-      else
-        flash[:alert] = result[:error]
-        redirect_to admin_bid_wizard_path(@bid)
+        if result[:success]
+          redirect_to admin_bid_wizard_path(@bid)
+        else
+          flash[:alert] = result[:error]
+          redirect_to admin_bid_wizard_path(@bid)
+        end
+      rescue => e
+        @bid.destroy
+        flash[:alert] = e.message
+        @clients = Client.order(:name)
+        @apps = App.included.includes(:app_assignments).order(:name)
+        render :new, status: :unprocessable_entity
       end
     else
       @clients = Client.order(:name)
