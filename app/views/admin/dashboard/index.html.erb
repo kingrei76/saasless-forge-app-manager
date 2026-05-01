@@ -1,5 +1,25 @@
 <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
 
+<div class="flex flex-wrap items-center gap-2 mb-4">
+  <%= link_to admin_root_path(month: @prev_month.strftime("%Y-%m")),
+        class: "btn btn-sm btn-outline", "aria-label": "Previous month" do %>
+    <i class="fas fa-chevron-left"></i>
+  <% end %>
+  <span class="font-semibold min-w-[10rem] text-center"><%= @selected_month.strftime("%B %Y") %></span>
+  <%= link_to admin_root_path(month: @next_month.strftime("%Y-%m")),
+        class: "btn btn-sm btn-outline", "aria-label": "Next month" do %>
+    <i class="fas fa-chevron-right"></i>
+  <% end %>
+  <% if @selected_month != @current_month %>
+    <%= link_to "This month", admin_root_path, class: "btn btn-sm btn-ghost" %>
+  <% end %>
+  <%= form_with url: admin_root_path, method: :get, local: true, class: "flex items-center gap-1 ml-2" do |f| %>
+    <%= f.month_field :month, value: @selected_month.strftime("%Y-%m"),
+          class: "input input-sm input-bordered",
+          onchange: "this.form.requestSubmit()" %>
+  <% end %>
+</div>
+
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
   <div class="stat bg-base-100 rounded-box shadow">
     <div class="stat-figure text-primary">
@@ -22,7 +42,7 @@
     <div class="stat-figure text-accent">
       <i class="fas fa-dollar-sign text-2xl"></i>
     </div>
-    <div class="stat-title">Monthly Cost</div>
+    <div class="stat-title">Cost — <%= @selected_month.strftime("%b %Y") %></div>
     <div class="stat-value text-accent"><%= number_to_currency(@monthly_cost) %></div>
   </div>
 
@@ -30,7 +50,7 @@
     <div class="stat-figure text-success">
       <i class="fas fa-chart-line text-2xl"></i>
     </div>
-    <div class="stat-title">Monthly Revenue</div>
+    <div class="stat-title">Revenue — <%= @selected_month.strftime("%b %Y") %></div>
     <div class="stat-value text-success"><%= number_to_currency(@monthly_revenue) %></div>
   </div>
 </div>
