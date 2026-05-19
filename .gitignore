@@ -22,3 +22,31 @@ new-a-record.json
 # Rails storage - ignore contents but keep directory for proper ownership
 rails/storage/*
 !rails/storage/.gitkeep
+
+# Local Bundler/Rails artifacts (never committed)
+.bundle/
+log/
+coverage/
+tmp/cache/
+tmp/local_secret.txt
+
+# Bundler-generated binstubs (the repo only commits the curated bin/ helpers)
+bin/bootsnap
+bin/bundle
+bin/erb
+bin/htmldiff
+bin/irb
+bin/ldiff
+bin/minitest
+bin/nokogiri
+bin/puma
+bin/pumactl
+bin/racc
+bin/rackup
+bin/rdbg
+bin/rdoc
+bin/ri
+bin/rspec
+bin/sprockets
+bin/stripe-console
+bin/thor
