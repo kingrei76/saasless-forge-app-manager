@@ -263,5 +263,10 @@ Rails.application.routes.draw do
       post "execution_done",   to: "agent_callbacks#execution_done"
       post "error",            to: "agent_callbacks#error"
     end
+
+    # Push bids/projects from external tools (e.g., Claude Code)
+    resources :bids, only: [:create] do
+      member { post :accept }
+    end
   end
 end

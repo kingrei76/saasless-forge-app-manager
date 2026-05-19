@@ -8,6 +8,7 @@ FactoryBot.define do
 
     trait :admin do
       admin { true }
+      role { :admin }
     end
 
     after(:create) do |user|
